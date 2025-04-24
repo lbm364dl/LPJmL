@@ -89,7 +89,7 @@
   "wateruse" : "all",       /* HIL water withdrawals and return flows, requires wateruse input, options: "no", "yes" (only for years prescribed in input), "all" (use first year for years before and last year of input for years after period prescibed in input file) */
   "equilsoil" : false,      /* enables soil equilibration  (natural vegetation spinup) */
 #else
-  "equilsoil" : true,       /* enables soil equilibration  (natural vegetation spinup) */
+  "equilsoil" : false,       /* enables soil equilibration  (natural vegetation spinup) */
   "population" : false,     /* use population input (for spitfire) */
   "landuse" : "no",         /* landuse setting; options: "no", "yes", "const", "all_crops", "only_crops" */
   "reservoir" : false,      /* enables reservoirs (changes discharge and allows for irrigation water source), requires river_routing=true and elevation and reservoir input files  */
@@ -208,7 +208,7 @@
 /*===================================================================*/
 
 
-  "inpath" : "/home/catalin/LPJmL/inputs",
+  "inpath" : "/home/usuario/LPJmL/inputs",
 
   /* Input files of CRU dataset */
   "input" :
@@ -403,12 +403,12 @@ ID                               Fmt                        filename
 
 #else
   /* first spinup */
-  "nspinup" : 3500,  /* spinup years */
+  "nspinup" : 2,  /* spinup years */
   "nspinyear" : 30,  /* cycle length during spinup (yr) */
   "firstyear": 1901, /* first year of simulation */
   "lastyear" : 1901, /* last year of simulation */
   "restart" :  false, /* start from restart file */
-  "outputyear" : -1599,
+  "outputyear" : -1899,
   "write_restart" : true, /* create restart file at year defined in "restart_year" */
   "write_restart_filename" : "restart/restart_1840_nv_stdfire.lpj", /* filename of restart file written */
   "restart_year": 1840 /* write restart at year */

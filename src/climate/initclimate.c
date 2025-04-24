@@ -16,6 +16,7 @@
 /**                                                                                \n**/
 /**************************************************************************************/
 
+#include <stdio.h>
 #include "lpj.h"
 
 
@@ -78,6 +79,7 @@ Climate *initclimate(const Cell grid[], /**< LPJ grid */
     freeclimate(climate,isroot(*config));
     return NULL;
   }
+  fprintf(stderr, "climate filetemp %f\n", climate->file_temp);
   climate->firstyear=climate->file_temp.firstyear;
   if(openclimate(&climate->file_prec,&config->prec_filename,"kg/m2/day" /* "mm" */,LPJ_SHORT,1.0,config))
   {
@@ -297,6 +299,13 @@ Climate *initclimate(const Cell grid[], /**< LPJ grid */
       freeclimate(climate,isroot(*config));
       return NULL;
     }
+      fprintf(stderr, "data.temp sizeof %d, file_temp.n %d\n", sizeof(climate->data.temp)/8, climate->file_temp.n);
+      for(int i = 0; i < climate->file_temp.n; ++i){
+        // if(*(climate->data.temp+i) > 0){
+          // fprintf(stderr, "%d\n", sizeof(*(climate->data.temp+i)));
+          // fprintf(stderr, "%d\n", sizeof(double));
+        // }
+      }
   }
   if(config->with_nitrogen && config->with_nitrogen!=UNLIM_NITROGEN && !config->no_ndeposition)
   {

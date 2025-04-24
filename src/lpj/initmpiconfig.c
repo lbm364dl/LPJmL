@@ -22,6 +22,7 @@ void initmpiconfig(Config *config, /**< LPJ configuration */
                    MPI_Comm comm   /**< MPI communicator */
                   )
 {
+  fprintf(stderr, "wtfhere initmpiconfig\n");
   config->comm=comm;
   MPI_Comm_rank(comm,&config->rank); /* get my rank: 0..ntask-1 */
   MPI_Comm_size(comm,&config->ntask); /* get number of tasks */

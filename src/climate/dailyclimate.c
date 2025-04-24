@@ -17,6 +17,7 @@
 /**                                                                                \n**/
 /**************************************************************************************/
 
+#include <stdio.h>
 #include "lpj.h"
 
 void dailyclimate(Dailyclimate *daily,    /**< */
@@ -37,8 +38,15 @@ void dailyclimate(Dailyclimate *daily,    /**< */
       daily->temp=climate->data.temp[cell*NDAYYEAR+day-1];
       climbuf->mtemp+=daily->temp;
     }
-    else
+    else{
+      // fprintf(stderr, "getcelltemp ");
+      // for (int i = 0; i < NMONTH; ++i) {
+      //   fprintf(stderr, "%f\n", *(getcelltemp(climate, cell)+i));
+      // }
+      // fprintf(stderr, "\n");
       daily->temp=interpolate(getcelltemp(climate,cell),month,dayofmonth);
+      // fprintf(stderr, "myinterpolation temp %f\n", daily->temp);
+    }
   }
   else
   {

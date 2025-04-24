@@ -24,6 +24,7 @@ Real interpolate(const MReal mval, /**< monthly values to interpolate        */
                  int dm            /**< day of month (0..ndaymonth[month]-1) */
                 )                  /** \return interpolated value            */
 {
+  // fprintf(stderr, "monthhhh %f\n", month);
   int nextmonth;
   if(dm>=ndaymonth[month]/2)
   {
@@ -39,11 +40,22 @@ Real interpolate(const MReal mval, /**< monthly values to interpolate        */
       month--; 
     dm+=(ndaymonth[month]+1)/2; 
   }
+  // fprintf(stderr, "nextmonth %f\n", nextmonth);
 #ifdef DEBUG3
   printf("mval[%d]=%g,mval[%d]=%g,dm=%d,diffday=%g,%d\n",month,mval[month],
          nextmonth,mval[nextmonth],dm,diffday[month],ndaymonth[month]);
   printf("res=%g\n",mval[month]+dm*(mval[nextmonth]-mval[month])*diffday[month]);
 #endif
+  // fprintf(stderr, "diffday %f\n", diffday[month]);
+  // fprintf(stderr, "mvals ");
+  // for (int i = 0; i < NMONTH; ++i) {
+  //   fprintf(stderr, "%f ", mval[i]);
+  // }
+  // fprintf(stderr, "\n");
+  // fprintf(stderr, "mymonths %i %i %f %f\n", nextmonth, month, mval[nextmonth], mval[month]);
+  // fprintf(stderr, "diff %f\n", mval[nextmonth]-mval[month]);
+  // fprintf(stderr, "product %f\n", dm*(mval[nextmonth]-mval[month])*diffday[month]);
+  // fprintf(stderr, "all %f\n", mval[month]+dm*(mval[nextmonth]-mval[month])*diffday[month]);
 
   return mval[month]+dm*(mval[nextmonth]-mval[month])*diffday[month];
 } /* of 'interpolate' */

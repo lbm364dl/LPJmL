@@ -36,6 +36,7 @@
 /**                                                                                \n**/
 /**************************************************************************************/
 
+#include <stdio.h>
 #include "lpj.h"
 
 void iterateyear(Outputfile *output,  /**< Output file data */
@@ -95,6 +96,7 @@ void iterateyear(Outputfile *output,  /**< Output file data */
   {
     for(cell=0;cell<config->ngridcell;cell++)
     {
+      // fprintf(stderr, "mycell %d\n", cell);
       grid[cell].discharge.mfin=grid[cell].discharge.mfout=grid[cell].ml.mdemand=0.0;
       grid[cell].output.mpet=0;
       if(grid[cell].ml.dam)
@@ -102,6 +104,7 @@ void iterateyear(Outputfile *output,  /**< Output file data */
       initoutputdata(&((grid+cell)->output),MONTHLY,year,config);
       if(!grid[cell].skip)
       {
+        // fprintf(stderr, "noskip\n");
         initclimate_monthly(input.climate,&grid[cell].climbuf,cell,month,grid[cell].seed);
 
 #if defined IMAGE && defined COUPLED
@@ -109,6 +112,7 @@ void iterateyear(Outputfile *output,  /**< Output file data */
 #endif
 
 #ifdef DEBUG
+        // fprintf(stderr, "wtfhere\n");
        printf("temp = %.2f prec = %.2f wet = %.2f",
              (getcelltemp(input.climate,cell))[month],
              (getcellprec(input.climate,cell))[month],
@@ -131,6 +135,7 @@ void iterateyear(Outputfile *output,  /**< Output file data */
     } /* of 'for(cell=...)' */
     foreachdayofmonth(dayofmonth,month)
     {
+      // fprintf(stderr, "months   %d %d\n", dayofmonth, month);
       for(cell=0;cell<config->ngridcell;cell++)
       {
         if(!grid[cell].skip)
@@ -143,9 +148,11 @@ void iterateyear(Outputfile *output,  /**< Output file data */
           dailyclimate(&daily,input.climate,&grid[cell].climbuf,cell,day,
                        month,dayofmonth);
 #ifdef SAFE
+          // fprintf(stderr, "%d %d %d\n", daily.prec, daily.sun, daily.windspeed);
           if(degCtoK(daily.temp)<0)
           {
             if(degCtoK(daily.temp)<(-0.2)) /* avoid precision errors: only fail if values are more negative than -0.2 */
+              // fprintf(stderr, "%f\n", daily.temp);
               fail(INVALID_CLIMATE_ERR,FALSE,"Temperature=%g K less than zero for cell %d at day %d",degCtoK(daily.temp),cell+config->startgrid,day);
             daily.temp=-273.15;
           }

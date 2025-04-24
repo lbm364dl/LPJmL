@@ -89,6 +89,7 @@ int iterate(Outputfile *output, /**< Output file data */
     printf("Starting from checkpoint file '%s'.\n",config->checkpoint_restart_filename);
   for(year=startyear;year<=config->lastyear;year++)
   {
+    fprintf(stderr, "Iterate year %d\n", year);
 #if defined IMAGE && defined COUPLED
     if(year>=config->start_coupling)
       co2=receive_image_co2(config);
