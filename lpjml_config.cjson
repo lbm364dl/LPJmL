@@ -83,10 +83,10 @@
 #ifdef FROM_RESTART
   "new_seed" : false,       /* read random seed from restart file */
   "population" : false,     /* use population input (for spitfire) */
-  "landuse" : "yes",        /* landuse setting; options: "no", "yes", "const", "all_crops", "only_crops" */
+  "landuse" : "no",        /* landuse setting; options: "no", "yes", "const", "all_crops", "only_crops" */
   "landuse_year_const" : 2000, /* set landuse year for "const" and "only_crops" cases */
-  "reservoir" : true,       /* enables reservoirs (changes discharge and allows for irrigation water source), requires river_routing=true and elevation and reservoir input files  */
-  "wateruse" : "all",       /* HIL water withdrawals and return flows, requires wateruse input, options: "no", "yes" (only for years prescribed in input), "all" (use first year for years before and last year of input for years after period prescibed in input file) */
+  "reservoir" : false,       /* enables reservoirs (changes discharge and allows for irrigation water source), requires river_routing=true and elevation and reservoir input files  */
+  "wateruse" : "no",       /* HIL water withdrawals and return flows, requires wateruse input, options: "no", "yes" (only for years prescribed in input), "all" (use first year for years before and last year of input for years after period prescibed in input file) */
   "equilsoil" : false,      /* enables soil equilibration  (natural vegetation spinup) */
 #else
   "equilsoil" : false,       /* enables soil equilibration  (natural vegetation spinup) */
@@ -227,8 +227,8 @@
   /* output data settings */
   "outpath" : null,           /* Default path to output files or null */
   "output_metafile" : true,   /* json metafile created (true/false) */
-  "default_fmt" : "raw",      /* default format for output files: "raw","txt","cdf","clm","sock" */
-  "default_suffix" : ".bin",  /* default file suffix for output files */
+  "default_fmt" : "cdf",      /* default format for output files: "raw","txt","cdf","clm","sock" */
+  "default_suffix" : ".nc",  /* default file suffix for output files */
   "grid_type" : "short",      /* set datatype of grid file ("short", "float", "double") */
   "flush_output" : false,     /* flush output to file every time step */
   "absyear" : false,          /* absolute years instead of years relative to baseyear (true/false) */
@@ -385,18 +385,18 @@ ID                               Fmt                        filename
 
 #ifdef FROM_RESTART
 
-  "nspinup" : 420,   /* spinup years */
+  "nspinup" : 0,   /* spinup years */
   "nspinyear" : 30,  /* cycle length during spinup (yr)*/
   "firstyear": 1901, /* first year of simulation */
 #if defined CRU_MONTHLY || defined CRU_NETCDF
-  "lastyear" : 2011, /* last year of simulation */
+  "lastyear" : 1901, /* last year of simulation */
 #else
-  "lastyear" : 2019, /* last year of simulation */
+  "lastyear" : 1901, /* last year of simulation */
 #endif
   "outputyear": 1901, /* first year output is written  */
   "baseyear": 1901, /* base year for output  */
   "restart" :  true, /* start from restart file */
-  "restart_filename" : "restart/restart_1840_nv_stdfire.lpj", /* filename of restart file */
+  "restart_filename" : "simulation/restart/scen1/restart.lpj", /* filename of restart file */
   "write_restart" : true, /* create restart file */
   "write_restart_filename" : "restart/restart_1900_crop_stdfire.lpj", /* filename of restart file written */
   "restart_year": 1900 /* write restart at year */
@@ -408,10 +408,10 @@ ID                               Fmt                        filename
   "firstyear": 1901, /* first year of simulation */
   "lastyear" : 1901, /* last year of simulation */
   "restart" :  false, /* start from restart file */
-  "outputyear" : -1899,
+  "outputyear" : 1901,
   "write_restart" : true, /* create restart file at year defined in "restart_year" */
   "write_restart_filename" : "restart/restart_1840_nv_stdfire.lpj", /* filename of restart file written */
-  "restart_year": 1840 /* write restart at year */
+  "restart_year": 1901 /* write restart at year */
 
 #endif
 }
