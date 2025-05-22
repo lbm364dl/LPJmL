@@ -30,7 +30,7 @@
   "lwdown" :       { "id" : 43, "fmt" : "clm",  "name" : "DUMMYLOCATION"},
   "swdown" :       { "id" : 3, "fmt" : "clm",  "name" : "DUMMYLOCATION"},
   "cloud" : { "fmt" : "cdf", "var" : "cld", "name" : "climate/cru_ts_3_10.1901.2009.cld.dat.nc"},
-  "wind" : { "fmt" : "cdf", "var" : "windspeed", "name" : "/p/projects/biodiversity/cru_netcdf/mwindspeed_1860-2100_67420.nc"},
+  "wind" : { "fmt" : "cdf", "var" : "wind", "name" : "climate/wind_gswp3-w5e5_1901_1910.nc4"},
   "tamp" : { "fmt" : "cdf", "var" : "tamp", "name" : "/p/projects/biodiversity/cru_netcdf/cru_ts_3_10.1901.2009.dtr.nc"}, /* diurnal temp. range */
   "wetdays" : { "fmt" : "cdf", "var" : "wet", "name" : "climate/cru_ts3.20.1901.2011.wet.dat.nc"},
 #else /*  Default from GSWP3 W5E5 */
@@ -50,8 +50,8 @@
   "coord" :        { "id" : 43, "fmt" : "clm",  "name" : "gadm/grid_gadm_30arcmin.bin"},
   "landfrac" :     { "id" : 44, "fmt" : "clm",  "name" : "gadm/landfrac_gadm_30arcmin.bin"},
   "countrycode" :  { "id" : 25, "fmt" : "clm",  "name" : "gadm/cow_gadm_30arcmin.bin"},
-  "no3deposition" : { "id" : 17, "fmt" : "clm",  "name" : "input_VERSION2/no3_deposition_rcp8p5.clm"},
-  "nh4deposition" : { "id" : 16, "fmt" : "clm",  "name" : "input_VERSION2/nh4_deposition_rcp8p5.clm"},
+  "no3deposition" : { "id" : 17, "fmt" : "cdf", "var": "noy", "name" : "nitrogen/ndep_noy_histsoc_monthly_1860_2016.nc4"},
+  "nh4deposition" : { "id" : 16, "fmt" : "cdf", "var": "nhx", "name" : "nitrogen/ndep_nhx_histsoc_monthly_1860_2016.nc4"},
   "soilpH" :        { "id" : 26, "fmt" : "clm",  "name" : "soil/soil_pH_30arcmin.bin"},
 #ifdef OLD_LU
   "landuse" :      { "id" : 6, "fmt" : "clm",  "name" : "input_VERSION2/cft1700_2005_irrigation_systems_64bands.bin"},

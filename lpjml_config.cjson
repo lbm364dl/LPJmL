@@ -386,7 +386,7 @@ ID                               Fmt                        filename
 #ifdef FROM_RESTART
 
   "nspinup" : 0,   /* spinup years */
-  "nspinyear" : 30,  /* cycle length during spinup (yr)*/
+  "nspinyear" : 5,  /* cycle length during spinup (yr)*/
   "firstyear": 1901, /* first year of simulation */
 #if defined CRU_MONTHLY || defined CRU_NETCDF
   "lastyear" : 1901, /* last year of simulation */
@@ -404,9 +404,9 @@ ID                               Fmt                        filename
 #else
   /* first spinup */
   "nspinup" : 2,  /* spinup years */
-  "nspinyear" : 30,  /* cycle length during spinup (yr) */
+  "nspinyear" : 5,  /* cycle length during spinup (yr) */
   "firstyear": 1901, /* first year of simulation */
-  "lastyear" : 1901, /* last year of simulation */
+  "lastyear" : 1902, /* last year of simulation */
   "restart" :  false, /* start from restart file */
   "outputyear" : 1901,
   "write_restart" : true, /* create restart file at year defined in "restart_year" */
