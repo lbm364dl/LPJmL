@@ -108,7 +108,6 @@ int main(int argc,char **argv)
   };
   time(&tbegin);         /* Start timing for total wall clock time */
 #ifdef USE_MPI
-  fprintf(stderr, "running MPI?\n");
   MPI_Init(&argc,&argv); /* Initialize MPI */
 /*
  * Use default communicator containing all processors. In defining your own
