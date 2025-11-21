@@ -46,7 +46,7 @@
   "tmin":          { "id" : 9, "fmt" : "clm",  "name" : "ISIMIP3av2/obsclim/GSWP3-W5E5/tasmin_gswp3-w5e5_obsclim_1901-2019.clm"},
   "humid":          { "id" : 14, "fmt" : "clm",  "name" : "ISIMIP3av2/obsclim/GSWP3-W5E5/huss_gswp3-w5e5_obsclim_1901-2019.clm"},
 #endif
-  "soil" :         { "id" : 41, "fmt" : "clm", "name" : "soil/soil_30arcmin_13_types.bin"},
+  "soil" :         { "id" : 41, "fmt" : "cdf", "var": "soil_type", "name" : "soil/soil_30arcmin_13_types.nc"},
   "coord" :        { "id" : 43, "fmt" : "clm",  "name" : "gadm/grid_gadm_30arcmin.bin"},
   "landfrac" :     { "id" : 44, "fmt" : "clm",  "name" : "gadm/landfrac_gadm_30arcmin.bin"},
   "countrycode" :  { "id" : 25, "fmt" : "clm",  "name" : "gadm/cow_gadm_30arcmin.bin"},
@@ -62,7 +62,7 @@
   "fertilizer_nr" : { "id" : 18, "fmt" :"clm",  "name" : "input_VERSION3/fertilizer_luh2v2_1900-2015_32bands.clm"},
   "manure_nr" :    { "id" : 19, "fmt" : "clm", "name" : "input_VERSION3/manure_zhang17_1860-2014_32bands_clm2.clm"},
 #else /* Default from LandInG toolbox  */
-  "landuse" :      { "id" : 6, "fmt" : "clm",  "name" : "input_toolbox_30arcmin/paper_version/cft_default_cft_aggregation_30min_1500-2017_fallow_to_others_64bands.clm"},
+  "landuse" :      { "id" : 6, "fmt" : "clm",  "name" : "landuse/cft_default_cft_aggregation_30min_1500-2017.bin"},
   "fertilizer_nr" : { "id" : 18, "fmt" :"clm",  "name" : "input_toolbox_30arcmin/paper_version/fert_N_default_cft_aggregation_30min_1860-2017.clm"},
   "manure_nr" :    { "id" : 19, "fmt" : "clm", "name" : "input_toolbox_30arcmin/paper_version/manure_N_default_cft_aggregation_30min_1860-2017.clm"},
 #endif
