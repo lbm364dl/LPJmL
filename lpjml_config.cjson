@@ -98,20 +98,20 @@
   "cultivation_types" : ["none","biomass","annual crop"], /* cultivation types to read from pft.cjson. Cultivations types are "none" (natural PFTs), "biomass" (bioenergy PFTs), "wp" (wood plantation PFTs),  "annual tree" (agriculture tree PFTs) and "annual crop" (CFTs)*/
   "prescribe_burntarea" : false, /* prescribe burned area on nat vegetation (for spitfire)  */
   "prescribe_landcover" : "no_landcover", /* prescribe natural veg composition, options: "no_landcover", "landcoverfpc" (FPC), "landcoverest" (establishment) */
-  "sowing_date_option" : "prescribed_sdate",   /* options: no_fixed_sdate, fixed_sdate, prescribed_sdate */
+  "sowing_date_option" : "fixed_sdate",   /* options: no_fixed_sdate, fixed_sdate, prescribed_sdate */
   "sdate_fixyear" : 1970,               /* year in which sowing dates shall be fixed, when using fixed_sdate */
   "intercrop" : false,                  /* enables intercrops on setaside */
-  "residue_treatment" : "read_residue_data", /* residue options: "read_residue_data" (requires input dataset on fraction to remain on field), "no_residue_remove" (all non-harvested plant components to litter), "fixed_residue_remove" (fraction of non-harvested above ground biomass to remain in soil according to param residues_in_soil) */
+  "residue_treatment" : "fixed_residue_remove", /* residue options: "read_residue_data" (requires input dataset on fraction to remain on field), "no_residue_remove" (all non-harvested plant components to litter), "fixed_residue_remove" (fraction of non-harvested above ground biomass to remain in soil according to param residues_in_soil) */
   "residues_fire" : false,              /* enables burning of residuals on cropland - non-functional? */
   "irrigation" : "lim",                 /* options: "no", "lim", "pot", "all" */
   "laimax_manage" : "laimax_par",       /* laimax settings, options:  "laimax_par" (values from pft.cjson), "laimax_cft" (values from manage_irrig_*.cjson), "laimax_const" (constant values set in flag laimax) */
   "laimax" : 5,                         /* maximum LAI for laimax_manage = "laimax_const" */
-  "tillage_type" : "read",              /* Options: "all" (all agr. cells tilled), "no" (no cells tilled) and "read" (tillage dataset used) */
+  "tillage_type" : "all",              /* Options: "all" (all agr. cells tilled), "no" (no cells tilled) and "read" (tillage dataset used) */
   "no_ndeposition" : false,             /* turn off atmospheric N deposition */
   "rw_manage" : false,                  /* enable rain water management; specific parameters in lpjparam.cjson */
   "fertilizer_input" : "yes",           /* fertilizer input setting, options: "no" (crops only depend on N in soils and from deposition), "yes", "auto" (applies exact N demand required by managed vegetation directly to plants - removes any N stress) */
   "manure_input" : true,                /* enable manure input */
-  "fix_fertilization" : false,          /* fertilizer and manure input setting, options: "false" (prescribed time/cell/cft specific input), "true" (global constant rates from lpjmlparam.cjson) */
+  "fix_fertilization" : true,          /* fertilizer and manure input setting, options: "false" (prescribed time/cell/cft specific input), "true" (global constant rates from lpjmlparam.cjson) */
   "others_to_crop" : true,              /* true: cultivate others as a separate stand of cft according to setting "cft_temp"/"cft_trop"; false: simulate others as grassland with setting "grazing_others" */
   "cft_temp" : "temperate cereals",     /* cft name (see pft.cjson) to simulate others in temperate regions (abs(lat)>30 deg), if others_to_crop is true  */
   "cft_tropic" : "maize",               /* cft name (see pft.cjson) to simulate others in tropical regions (abs(lat)<30 deg), if others_to_crop is true  */
@@ -120,10 +120,10 @@
   "grassonly" : false,                  /* set all cropland including others to zero but keep managed grasslands */
   "luc_timber" : true,                  /* true: extract timber carbon (timber_harvest output) if natural vegetation is cleared for managed land, false: carbon is put in litter */
   "grass_harvest_options" : false,      /* true: grid-specific grassland management, requires input file; false: default management (setting "grazing") everywhere */
-  "prescribe_lsuha" : true,             /* prescribe livestock unit per hectare, input required (needed for "grazing" = "livestock") */
+  "prescribe_lsuha" : false,             /* prescribe livestock unit per hectare, input required (needed for "grazing" = "livestock") */
   "mowing_days" : [152, 335],           /* Mowing days (day-of-year) for grassland if "grazing" = "mowing" */
   "crop_resp_fix" : false,              /* C:N ratio setting affecting crop respiration - options: true (fixed - avoids yield reductions at high n inputs); false (variable/dynamic) */
-  "crop_phu_option" : "prescribed",     /* defines setting for phenological heat unit and vernalization requirements for crops; options: "old", "new", "prescribed" */
+  "crop_phu_option" : "new",     /* defines setting for phenological heat unit and vernalization requirements for crops; options: "old", "new", "prescribed" */
   "separate_harvests" : true,           /* true: enables outputs for second growing season (e.g. harvest2.bin; sdate2.bin - have to be explicitly added to outputs); false: crop specific outputs over all growing seasons are added up/overwritten - caution: this interplays with the setting "grid_scaled" */
   "npp_controlled_bnf" : true,          /* enable npp controlled bnf based on Ma et al. 2022, alternatively old Cleveland et al. 1999*/
   "percolation_heattransfer" : true,    /* enable heat transfer by percolation of water through the soil */
