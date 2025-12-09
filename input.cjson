@@ -30,7 +30,7 @@
   "lwdown" :       { "id" : 43, "fmt" : "clm",  "name" : "DUMMYLOCATION"},
   "swdown" :       { "id" : 3, "fmt" : "clm",  "name" : "DUMMYLOCATION"},
   "cloud" : { "fmt" : "cdf", "var" : "cld", "name" : "climate/cru_ts_3_10.1901.2009.cld.dat.nc"},
-  "wind" : { "fmt" : "cdf", "var" : "wind", "name" : "climate/wind_gswp3-w5e5_1901_1910.nc4"},
+  "wind" : { "fmt" : "cdf", "var" : "wind", "name" : "climate/wind_gswp3-w5e5_1901_2016_monthly.nc"},
   "tamp" : { "fmt" : "cdf", "var" : "tamp", "name" : "/p/projects/biodiversity/cru_netcdf/cru_ts_3_10.1901.2009.dtr.nc"}, /* diurnal temp. range */
   "wetdays" : { "fmt" : "cdf", "var" : "wet", "name" : "climate/cru_ts3.20.1901.2011.wet.dat.nc"},
 #else /*  Default from GSWP3 W5E5 */
