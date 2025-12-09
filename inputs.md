@@ -1,3 +1,53 @@
+# Run LPJmL in a subset of cells
+
+- For adjacent cell range use options `startgrid` and `endgrid` in `lpjml_config.cjson`
+- For arbitrary subset of cells there's a workaround. In the [soil types input](#soil-types), if the cell contain a null value, LPJmL will skip that cell. So you can create a soil types input file where only the cells you want to run have a valid soil type, and the rest are null values. [Reference](https://github.com/PIK-LPJmL/LPJmL/issues/71)
+
+# Currently used LPJmL inputs
+
+### Soil types
+
+#### `input.cjson`:
+
+```json
+  "soil" :         { "id" : 41, "fmt" : "cdf", "var": "soil_type", "name" : "soil/soil_30arcmin_13_types.nc"},
+```
+
+#### Layers
+
+Static, no time series, 1 layer.
+
+#### Values
+
+Types of soil defined in `lpjml_config.cjson`:
+
+```json
+  "soilmap" : [null,"clay", "silty clay", "sandy clay", "clay loam", "silty clay loam",
+              "sandy clay loam", "loam", "silt loam", "sandy loam", "silt",
+              "loamy sand", "sand", "rock and ice"],
+```
+
+Raster values are numbers from 1 to 13, indicating the index in the above list (starting from 0). Careful with using the number 0. If you want to skip a cell remember to use `null` directly. In terra R package, you can use `NA` to represent null values.
+
+### [Input name]
+#### `input.cjson`:
+
+```json
+  "[input_key]" : { "id" : [id], "fmt" : "[format]", "var": "[variable]", "name" : "[path/to/file]" },
+```
+
+#### Layers
+
+[Static or temporal, number of layers/bands, time series info.]
+
+#### Values
+
+[Description of value types, units, valid ranges, and any mapping or typology.]
+
+
+
+# Other things about inputs
+
 ### Number of bands x2 or x4 for irrigation
 
 Whenever asked for doubled number of bands, it should mean the first half represents rainfed and the second half irrigated. If asked for quadruple number of bands, it should be in this order: no irrigation, surface irrigation, sprinkler, drip.
