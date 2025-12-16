@@ -62,7 +62,7 @@
   "fertilizer_nr" : { "id" : 18, "fmt" :"clm",  "name" : "input_VERSION3/fertilizer_luh2v2_1900-2015_32bands.clm"},
   "manure_nr" :    { "id" : 19, "fmt" : "clm", "name" : "input_VERSION3/manure_zhang17_1860-2014_32bands_clm2.clm"},
 #else /* Default from LandInG toolbox  */
-  "landuse" :      { "id" : 6, "fmt" : "clm",  "name" : "landuse/cft_default_cft_aggregation_30min_1500-2017.bin"},
+  "landuse" :      { "id" : 6, "fmt" : "cdf", "var" : "landuse",  "name" : "landuse/cft_default_cft_aggregation_30min_1900-2017.nc"},
   "fertilizer_nr" : { "id" : 18, "fmt" :"clm",  "name" : "input_toolbox_30arcmin/paper_version/fert_N_default_cft_aggregation_30min_1860-2017.clm"},
   "manure_nr" :    { "id" : 19, "fmt" : "clm", "name" : "input_toolbox_30arcmin/paper_version/manure_N_default_cft_aggregation_30min_1860-2017.clm"},
 #endif
