@@ -221,34 +221,6 @@ Not a raster, just a time series with one value per year in a tab separated file
 1800	282.90
 ```
 
-### Land use types
-
-#### `input.cjson`:
-
-```json
-  "landuse" :      { "id" : 6, "fmt" : "clm",  "name" : "landuse/cft_default_cft_aggregation_30min_1500-2017.bin"},
-```
-
-#### Layers
-
-Static, no time series, 1 layer.
-
-#### Values
-
-Types of soil defined in `lpjml_config.cjson`:
-
-```json
-  "soilmap" : [null,"clay", "silty clay", "sandy clay", "clay loam", "silty clay loam",
-              "sandy clay loam", "loam", "silt loam", "sandy loam", "silt",
-              "loamy sand", "sand", "rock and ice"],
-```
-
-Raster values are numbers from 1 to 13, indicating the index in the above list (starting from 0). Careful with using the number 0. If you want to skip a cell remember to use `null` directly. In terra R package, you can use `NA` to represent null values.
-
-#### Values
-
-Decimal values representing the CO2 concentration in parts per million (ppm).
-
 ### Countries and subdivisions
 
 #### `input.cjson`:
@@ -291,11 +263,17 @@ Yearly time series. 32 layers (16 rainfed, 16 irrigated). Each 16 layers come in
                   "sugarcane","others","grassland","biomass grass","biomass tree"],
 ```
 
-TODO: this is currently not working in NetCDF format. Working on it https://github.com/PIK-LPJmL/LPJmL/issues/73
+LPJmL expects PFTs as an extra dimension. Besides defining the extra dimension `pft` (so there will be four dimensions), your NetCDF file should have this variable definition:
+
+```
+float landfrac(time, pft, lat, lon) ;
+```
+
+Source: Asking LPJmL devs at https://github.com/PIK-LPJmL/LPJmL/issues/73
 
 #### Values
 
-Decimal values between 0 and 1 representing percentage of land use in that grid cell for that crop type and irrigation system.
+Decimal values between 0 and 1 representing percentage of land use in that grid cell for that crop type and irrigation system. There cannot be null values, otherwise the simulation errors. Best workaround is probably filling nulls with `0`, representing no land-use for that type, if that makes sense.
 
 
 # Other things about inputs
