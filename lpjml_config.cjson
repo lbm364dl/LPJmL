@@ -289,6 +289,11 @@
     { "id" : "wd_res",       "file" : { "name" : "output/mwd_res" }},
     { "id" : "wd_gw",        "file" : { "name" : "output/mwd_gw" }},
     { "id" : "wd_aq",        "file" : { "name" : "output/mwd_aq" }},
+    { "id" : "cft_transp",   "file" : { "name" : "output/cft_transp" }},
+    { "id" : "cft_transp_b", "file" : { "name" : "output/cft_transp_b" }},
+    { "id" : "cft_nir",      "file" : { "name" : "output/cft_nir" }},
+    { "id" : "cft_consump_water_g", "file" : { "name" : "output/cft_consump_water_g" }},
+    { "id" : "cft_consump_water_b", "file" : { "name" : "output/cft_consump_water_b" }},
   
     // Generic ecosystem productivity and state
     { "id" : "npp",          "file" : { "name" : "output/mnpp" }},
