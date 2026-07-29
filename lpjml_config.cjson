@@ -108,7 +108,7 @@
   "equilsoil" : false,      /* enables soil equilibration  (natural vegetation spinup) */
   "river_routing" : true,   /* enable river routing (requires input matching grid and lakes/reservoirs) */
 #else
-  "methane" : "prescribed", /* methane value, other values: "fixed", "prescribed", "dynamic" */
+  "methane" : "fixed",      /* matches upstream's spinup branch; avoids requiring the "ch4" input. Other values: "prescribed", "dynamic" */
   "equilsoil" : false,       /* enables soil equilibration  (natural vegetation spinup) */
   "population" : "no",      /* use population input (for spitfire), options: "no", "density", "number" */
   "landuse" : "no",         /* landuse setting; options: "no", "yes", "const", "all_crops", "only_crops" */
