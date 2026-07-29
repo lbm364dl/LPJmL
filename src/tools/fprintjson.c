@@ -74,23 +74,23 @@ void fprintjson(FILE *file,           /**< pointer to text file */
       fprintf(file,"\",\n");
     }
   }
-  if(n_attr)
+  if(attrs!=NULL && n_attr>0)
   {
-    fprintf(file,"  \"global_attrs\" : {");
+    fprintf(file,"  \"global_attrs\" :\n  {\n");
     for(i=0;i<n_attr;i++)
     {
-      fprintf(file,"\"%s\" : \"%s\"",attrs[i].name,attrs[i].value);
+      fprintf(file,"    \"%s\" : \"%s\"",attrs[i].name,attrs[i].value);
       if(i<n_attr-1)
-        fprintf(file,", ");
+        fprintf(file,",\n");
     }
-    fprintf(file,"},\n");
+    fprintf(file,"\n  },\n");
   }
   if(variable!=NULL)
     fprintf(file,"  \"variable\" : \"%s\",\n",variable);
   fprintf(file,"  \"firstcell\" : %d,\n",header->firstcell);
   fprintf(file,"  \"ncell\" : %d,\n",header->ncell);
-  fprintf(file,"  \"cellsize_lon\" : %f,\n",header->cellsize_lon);
-  fprintf(file,"  \"cellsize_lat\" : %f,\n",header->cellsize_lat);
+  fprintf(file,"  \"cellsize_lon\" : %.8g,\n",header->cellsize_lon);
+  fprintf(file,"  \"cellsize_lat\" : %.8g,\n",header->cellsize_lat);
   fprintf(file,"  \"firstyear\" : %d,\n",header->firstyear);
   fprintf(file,"  \"lastyear\" : %d,\n",header->firstyear+(header->nyear-1)*header->timestep);
   fprintf(file,"  \"nyear\" : %d,\n",header->nyear);

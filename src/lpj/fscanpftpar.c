@@ -83,6 +83,13 @@
     fprintf(stderr,"ERROR128: Cannot read emission factor '%s' for PFT '%s'.\n",name,pft); \
     return TRUE; \
   }
+#define fscanpftnuptakepar(verb,file,var,pft,name) \
+  if(fscannuptakepar(file,var,name,verb)) \
+  { \
+    if(verb)\
+    fprintf(stderr,"ERROR112: Cannot read N uptake param '%s' for PFT '%s'.\n",name,pft); \
+    return TRUE; \
+  }
 
 #define fscanpftirrig2(verb,file,var,pft,name)\
   if(fscanpftirrig(file,var,name,verb))\
@@ -159,6 +166,7 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
   for(n=0;n<count;n++)
     config->pftpar[n].id=UNDEF;
   isbiomass=isagtree=iscrop=iswp=FALSE;
+  config->rice_pft=NOT_FOUND;
   npft=0;
   for(n=0;n<count;n++)
   {
@@ -189,7 +197,7 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
     }
     pft->name=strdup(s); /* store PFT name */
     checkptr(pft->name);
-    npft++;
+    fscanpftbool(verb,item,&pft->peatland,pft->name,"peatland_pft");
     if(fscankeywords(item,&pft->type,"type",config->pfttypes,config->ntypes,FALSE,verb))
     {
       if(verb)
@@ -269,6 +277,8 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
         break;
       case ANNUAL_CROP:
         iscrop=TRUE;
+        if(!strcmp(pft->name,"rice"))
+          config->rice_pft=npft;
         break;
       case WP:
         iswp=TRUE;
@@ -365,16 +375,15 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
 
     fscanpftlimit(verb,item,&pft->temp,pft->name,"temp");
     fscanpftreal(verb,item,&pft->soc_k,pft->name,"soc_k");
-    if(config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX)
+    if(isspitfire(config))
     {
       fscanpftreal(verb,item,&pft->alpha_fuelp,pft->name,"alpha_fuelp");
       if(config->fdi==WVPD_INDEX)
         fscanpftreal(verb,item,&pft->vpd_par,pft->name,"vpd_par");
-      fscanpftemissionfactor(verb,item,&pft->emissionfactor,
-                             pft->name,"emission_factor");
     }
     else
       pft->fuelbulkdensity=0;
+    fscanpftemissionfactor(verb,item,&pft->emissionfactor,pft->name,"emission_factor");
     fscanpftreal(verb,item,&pft->fuelbulkdensity,pft->name,"fuelbulkdensity");
     fscanpftreal(verb,item,&pft->aprec_min,pft->name,"aprec_min");
     if(config->fire!=NO_FIRE)
@@ -392,41 +401,47 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
     fscanpftreal(verb,subitem,&pft->k_litter10.wood,pft->name,"wood");
     fscanpftreal(verb,item,&pft->k_litter10.q10_wood,pft->name,
                  "k_litter10_q10_wood");
-    if(config->with_nitrogen)
+    fscanpftbool(verb,item,&pft->nfixing,pft->name,"nfixing");
+    fscanpftnuptakepar(verb,item,&pft->NO3_up,pft->name,"NO3_up");
+    fscanpftnuptakepar(verb,item,&pft->NH4_up,pft->name,"NH4_up");
+    fscanpftreal(verb,item,&pft->knstore,pft->name,"knstore");
+    fscanpftreal01(verb,item,&pft->fn_turnover,pft->name,"fn_turnover");
+    fscanpftcnratio(verb,item,&cnratio,pft->name,"cnratio_leaf");
+    if(cnratio.low<=0 || cnratio.high<=0 || cnratio.median<=0)
     {
-      fscanpftbool(verb,item,&pft->nfixing,pft->name,"nfixing");
-      fscanpftreal(verb,item,&pft->vmax_up,pft->name,"vmax_up");
-      fscanpftreal(verb,item,&pft->kNmin,pft->name,"kNmin");
-      fscanpftreal(verb,item,&pft->KNmin,pft->name,"KNmin");
-      fscanpftreal(verb,item,&pft->knstore,pft->name,"knstore");
-      fscanpftreal01(verb,item,&pft->fn_turnover,pft->name,"fn_turnover");
-      fscanpftcnratio(verb,item,&cnratio,pft->name,"cnratio_leaf");
-      if(cnratio.low<=0 || cnratio.high<=0 || cnratio.median<=0)
+      if(verb)
+        fprintf(stderr,"ERROR235: CN ratio limits=(%g,%g,%g) must be greater than zero for PFT '%s'.\n",
+                cnratio.low,cnratio.median,cnratio.high,pft->name);
+      return TRUE;
+    }
+    pft->ncleaf.median=1/cnratio.median;
+    pft->ncleaf.low=1/cnratio.high;
+    pft->ncleaf.high=1/cnratio.low;
+    if(config->npp_controlled_bnf && pft->nfixing)
+    {
+      fscanpftlimit(verb,item,&pft->temp_bnf_lim,pft->name,"temp_bnf_lim");
+      fscanpftlimit(verb,item,&pft->temp_bnf_opt,pft->name,"temp_bnf_opt");
+      fscanpftlimit(verb,item,&pft->swc_bnf,pft->name,"swc_bnf");
+      if(pft->swc_bnf.high<=pft->swc_bnf.low)
       {
         if(verb)
-          fprintf(stderr,"ERROR235: CN ratio limits=(%g,%g,%g) must be greater than zero for PFT '%s'.\n",
-                  cnratio.low,cnratio.median,cnratio.high,pft->name);
+          fprintf(stderr,"ERROR235: High limit for sw_bnf=%g less or equal low limit=%g for PFT '%s'.\n",
+                  pft->swc_bnf.high,pft->swc_bnf.low,pft->name);
         return TRUE;
       }
-      pft->ncleaf.median=1/cnratio.median;
-      pft->ncleaf.low=1/cnratio.high;
-      pft->ncleaf.high=1/cnratio.low;
-      if(config->npp_controlled_bnf && pft->nfixing)
-      {
-        fscanpftlimit(verb,item,&pft->temp_bnf_lim,pft->name,"temp_bnf_lim");
-        fscanpftlimit(verb,item,&pft->temp_bnf_opt,pft->name,"temp_bnf_opt");
-        fscanpftlimit(verb,item,&pft->swc_bnf,pft->name,"swc_bnf");
-        fscanpftrealarray(verb,item,pft->phi_bnf,2,pft->name,"phi_bnf");
-        fscanpftreal(verb,item,&pft->nfixpot,pft->name,"nfixpot");
-        fscanpftreal(verb,item,&pft->maxbnfcost,pft->name,"maxbnfcost");
-        fscanpftreal(verb,item,&pft->bnf_cost,pft->name,"bnf_cost");
-        
-      }
+      pft->phi_bnf[0]=-pft->swc_bnf.low/(pft->swc_bnf.high-pft->swc_bnf.low);
+      pft->phi_bnf[1]=1.0/(pft->swc_bnf.high-pft->swc_bnf.low);
+      fscanpftreal(verb,item,&pft->nfixpot,pft->name,"nfixpot");
+      fscanpftreal(verb,item,&pft->maxbnfcost,pft->name,"maxbnfcost");
+      fscanpftreal(verb,item,&pft->bnf_cost,pft->name,"bnf_cost");
     }
-    else
-      pft->fn_turnover=0;
+    fscanpftreal(verb,item,&pft->fnpp_nrecovery,pft->name,"fnpp_nrecovery");
     fscanpftreal(verb,item,&pft->windspeed,pft->name,"windspeed_dampening");
     fscanpftreal(verb,item,&pft->roughness,pft->name,"roughness_length");
+    fscanpftreal(verb,item,&pft->inun_thres,pft->name,"ist_m");
+    fscanpftreal(verb,item,&pft->inun_dur,pft->name,"idt_d");
+    pft->inun_thres*=1000;
+    fscanpftreal(verb,item,&pft->alpha_e,pft->name,"alpha_e");
     fscanpftirrig2(verb,item,&pft->irrig_threshold,pft->name,"irrig_threshold");
     pft->k_litter10.leaf/=NDAYYEAR;
     pft->k_litter10.wood/=NDAYYEAR;
@@ -441,6 +456,14 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
     pft->turnover_monthly=noturnover_monthly;
     /* Now scan PFT-specific parameters and set specific functions */
     if(scanfcn[pft->type].fcn(item,pft,config))
+      return TRUE;
+    npft++;
+  } /* of for(n=0;n<count;n++) */
+  if(config->withlanduse && config->rice_pft==NOT_FOUND)
+  {
+    if(verb)
+      fprintf(stderr,"WARNING043: No rice CFT found in PFT parameter array.\n");
+    if(config->pedantic)
       return TRUE;
   }
   return FALSE;

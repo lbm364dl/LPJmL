@@ -77,6 +77,8 @@ Bool fscanpft_grass(LPJfile *file, /**< pointer to LPJ file */
   pft->leaf_phenology=phenology_grass;
   pft->fwrite=fwrite_grass;
   pft->mix_veg=mix_veg_grass;
+  pft->mix_veg_stock=mix_veg_stock_grass;
+  pft->copy=copy_grass;
   pft->fire=fire_grass;
   pft->fprint=fprint_grass;
   pft->fread=fread_grass;
@@ -88,6 +90,7 @@ Bool fscanpft_grass(LPJfile *file, /**< pointer to LPJ file */
   pft->lai=lai_grass;
   pft->init=init_grass;
   pft->free=free_grass;
+  pft->leafc=leafc_grass;
   pft->vegc_sum=vegc_sum_grass;
   pft->vegn_sum=vegn_sum_grass;
   pft->fprintpar=fprintpar_grass;
@@ -99,6 +102,7 @@ Bool fscanpft_grass(LPJfile *file, /**< pointer to LPJ file */
   pft->nuptake=nuptake_grass;
   pft->ndemand=ndemand_grass;
   pft->vmaxlimit=vmaxlimit_grass;
+  pft->getb=getb;
   grass=new(Pftgrasspar);
   if(grass==NULL)
   {
@@ -123,16 +127,20 @@ Bool fscanpft_grass(LPJfile *file, /**< pointer to LPJ file */
   grass->turnover.leaf=1.0/grass->turnover.leaf;
   grass->turnover.root=1.0/grass->turnover.root;
   fscangrassphys2(verb,file,&grass->nc_ratio,pft->name,"cn_ratio");
-  if(config->with_nitrogen)
+  fscanreal2(verb,file,&grass->ratio,pft->name,"ratio");
+  if(grass->ratio<=0)
   {
-    fscanreal2(verb,file,&grass->ratio,pft->name,"ratio");
-    if(grass->ratio<=0)
-    {
-      if(verb)
-        fprintf(stderr,"ERROR235: Grass ratio=%g must be greater than zero for PFT '%s'.\n",
-                grass->ratio,pft->name);
-      return TRUE;
-    }
+    if(verb)
+      fprintf(stderr,"ERROR235: Grass ratio=%g must be greater than zero for PFT '%s'.\n",
+              grass->ratio,pft->name);
+    return TRUE;
+  }
+  if(isspitfire(config))
+  {
+    fscanreal2(verb,file,&grass->lfmc_a,pft->name,"lfmc_a");
+    fscanreal2(verb,file,&grass->lfmc_b,pft->name,"lfmc_b");
+    fscanreal2(verb,file,&grass->lfmc_c,pft->name,"lfmc_c");
+    fscanreal2(verb,file,&grass->lfmc_d,pft->name,"lfmc_d");
   }
   fscanreal012(verb,file,&grass->reprod_cost,pft->name,"reprod_cost");
   grass->nc_ratio.leaf=1/grass->nc_ratio.leaf;

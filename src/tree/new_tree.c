@@ -36,13 +36,12 @@ void new_tree(Pft *pft, /**< Parameter of pft */
   tree->ind.root.nitrogen=tree->ind.sapwood.nitrogen=tree->ind.heartwood.nitrogen=tree->ind.leaf.nitrogen=0.0;
   tree->turn.root.carbon=tree->turn.leaf.carbon=tree->turn_litt.leaf.carbon=tree->turn_litt.root.carbon=0.0;
   tree->turn.root.nitrogen=tree->turn.leaf.nitrogen=tree->turn_litt.leaf.nitrogen=tree->turn_litt.root.nitrogen=0.0;
-  tree->turn_nbminc=0.0;
   sum=treepar->sapl.leaf.carbon+treepar->sapl.root.carbon+treepar->sapl.sapwood.carbon;
   tree->falloc.leaf=treepar->sapl.leaf.carbon/sum;
   tree->falloc.root=treepar->sapl.root.carbon/sum;
   tree->falloc.sapwood=treepar->sapl.sapwood.carbon/sum;
   tree->ind.debt.carbon=tree->ind.debt.nitrogen=tree->gddtw=tree->aphen_raingreen=0.0;
-  tree->height=tree->crownarea=0.0;
+  tree->height=tree->crownarea=tree->barkthickness=0.0;
   tree->isphen=FALSE;
   tree->fruit.carbon=tree->fruit.nitrogen=0;
   tree->nfertilizer=tree->nmanure=0;

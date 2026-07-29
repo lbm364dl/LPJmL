@@ -30,7 +30,7 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
                         Real melt,                   /**< melting water (mm/day) */
                         int npft,                    /**< number of natural PFTs */
                         int ncft,                    /**< number of crop PFTs   */
-                        int UNUSED(year),            /**< simulation year (AD) */
+                        int year,                    /**< simulation year (AD) */
                         Bool UNUSED(intercrop),      /**< enabled intercropping */
                         Real UNUSED(agrfrac),        /**< [in] total agriculture fraction (0..1) */
                         const Config *config         /**< LPJ config */
@@ -89,11 +89,10 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
     aet_stand[l]=green_transp[l]=0;
 
   /* Apply fertilizers */
-  if (config->with_nitrogen)
-      fertilize_tree(stand,
-                    (stand->cell->ml.fertilizer_nr==NULL) ? 0.0 : stand->cell->ml.fertilizer_nr[data->irrigation.irrigation].biomass_tree,
-                    (stand->cell->ml.manure_nr==NULL) ? 0.0 : stand->cell->ml.manure_nr[data->irrigation.irrigation].biomass_tree,
-                    day,config);
+  fertilize_tree(stand,
+                 (stand->cell->ml.fertilizer_nr==NULL) ? 0.0 : stand->cell->ml.fertilizer_nr[data->irrigation.irrigation].biomass_tree,
+                 (stand->cell->ml.manure_nr==NULL) ? 0.0 : stand->cell->ml.manure_nr[data->irrigation.irrigation].biomass_tree,
+                 day,config);
 
   /* green water inflow */
   rainmelt=climate->prec+melt;
@@ -134,7 +133,7 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
   {
     /* calculate old or new phenology */
     if (config->gsi_phenology)
-      phenology_gsi(pft, climate->temp, climate->swdown, day,climate->isdailytemp,config);
+      phenology_gsi(pft, climate->temp, climate->swdown, day,climate->isdailytemp,daylength,config);
     else
       leaf_phenology(pft,climate->temp,day,climate->isdailytemp,config);
     sprink_interc=(data->irrigation.irrig_system==SPRINK) ? 1 : 0;
@@ -147,21 +146,26 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
 
   irrig_apply-=intercep_stand_blue;
   rainmelt-=(intercep_stand-intercep_stand_blue);
+  irrig_apply=max(0,irrig_apply);
 
   /* soil inflow: infiltration and percolation */
   if(irrig_apply>epsilon)
   {
-    vol_water_enth = climate->temp*c_water+c_water2ice; /* enthalpy of soil infiltration */
-    runoff+=infil_perc_irr(stand,irrig_apply,vol_water_enth,&return_flow_b,npft,ncft,config);
     /* count irrigation events*/
     getoutputindex(output,CFT_IRRIG_EVENTS,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)++;
   }
 
-  if(climate->prec+melt>0)  /* enthalpy of soil infiltration */
-    vol_water_enth = climate->temp*c_water*climate->prec/(climate->prec+melt)+c_water2ice;
+  if((climate->prec+melt+irrig_apply)>0) /* enthalpy of soil infiltration */
+    vol_water_enth = climate->temp*c_water*(climate->prec+irrig_apply)/(climate->prec+irrig_apply+melt)+c_water2ice;
   else
     vol_water_enth=0;
-  runoff+=infil_perc_rain(stand,rainmelt,vol_water_enth,&return_flow_b,npft,ncft,config);
+#ifdef DEBUG
+  String line;
+  if(rainmelt+irrig_apply < 0)
+    fprintf(stderr,"WARNING044: Negative water input to infiltration on day %d of year %d in cell (%s): rainmelt=%g, irrig_apply=%g\n",
+            day,year,sprintcoord(line,&stand->cell->coord),rainmelt, irrig_apply);
+#endif
+  runoff+=infil_perc(stand,rainmelt+irrig_apply, vol_water_enth,climate->prec,&return_flow_b,npft,ncft,config);
 
   foreachpft(pft,p,&stand->pftlist)
   {
@@ -186,8 +190,8 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
      getoutputindex(output,PFT_GCGP_COUNT,nnat+rbtree(ncft)+data->irrigation.irrigation*nirrig,config)++;
      getoutputindex(output,PFT_GCGP,nnat+rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=gc_pft/gp_pft[getpftpar(pft,id)];
    }
-   npp=npp(pft,gtemp_air,gtemp_soil,gpp-rd-pft->npp_bnf,config->with_nitrogen);
-   pft->npp_bnf=0.0;
+   npp=npp(pft,gtemp_air,gtemp_soil,gpp-rd-pft->npp_bnf-pft->npp_nrecovery,config);
+   pft->npp_bnf=pft->npp_nrecovery=0.0;
    getoutput(output,NPP,config)+=npp*stand->frac;
    stand->cell->balance.anpp+=npp*stand->frac;
    stand->cell->balance.agpp+=gpp*stand->frac;
@@ -212,10 +216,10 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
   /* soil outflow: evap and transpiration */
   free(gp_pft);
   waterbalance(stand,aet_stand,green_transp,&evap,&evap_blue,wet_all,eeq,cover_stand,
-               &frac_g_evap,config->rw_manage);
+               &frac_g_evap,config->rw_manage,config);
 
   if(data->irrigation.irrigation && stand->pftlist.n>0) /*second element to avoid irrigation on just harvested fields */
-    calc_nir(stand,&data->irrigation,gp_stand,wet,eeq,config->others_to_crop);
+    calc_nir(stand,&data->irrigation,gp_stand,wet,eeq,config);
   transp=0;
   forrootsoillayer(l)
   {
@@ -226,10 +230,10 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
   stand->cell->balance.atransp+=transp;
   getoutput(output,INTERC,config)+=intercep_stand*stand->frac; /* Note: including blue fraction*/
   getoutput(output,INTERC_B,config)+=intercep_stand_blue*stand->frac;   /* blue interception and evap */
+  stand->cell->balance.ainterc+=intercep_stand*stand->frac;
 
   getoutput(output,EVAP,config)+=evap*stand->frac;
   stand->cell->balance.aevap+=evap*stand->frac;
-  stand->cell->balance.ainterc+=intercep_stand*stand->frac;
   getoutput(output,EVAP_B,config)+=evap_blue*stand->frac;   /* blue soil evap */
 #if defined(IMAGE) && defined(COUPLED)
   if(stand->cell->ml.image_data!=NULL)

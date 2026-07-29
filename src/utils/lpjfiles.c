@@ -16,11 +16,23 @@
 #include "grass.h"
 #include "tree.h"
 #include "crop.h"
+#include "natural.h"
+#include "grassland.h"
+#include "biomass_tree.h"
+#include "biomass_grass.h"
+#include "agriculture.h"
+#include "agriculture_grass.h"
+#include "agriculture_tree.h"
+#include "wetland.h"
+#include "urban.h"
 
 #define NTYPES 3 /* number of PFT types: grass, tree, crop */
+#define NSTANDTYPES 16 /* number of stand types / land use types as defined in landuse.h*/
+
 
 #define USAGE "Usage: %s [-h] [-v] [-noinput] [-nooutput] [-outpath dir] [-inpath dir] [-restartpath dir]\n"\
               "       [-nopp] [-pp cmd] [[-Dmacro[=value]] [-Idir] ...] filename\n"
+#define LPJ_USAGE USAGE "\nTry \"%s --help\" for more information.\n"
 
 int main(int argc,char **argv)
 {
@@ -31,6 +43,7 @@ int main(int argc,char **argv)
     {name_tree,fscanpft_tree},
     {name_crop,fscanpft_crop}
   };
+  Standtype *standtype[NSTANDTYPES];
   Config config;         /* LPJ configuration */
   int rc;                /* return code of program */
   const char *progname;
@@ -39,6 +52,22 @@ int main(int argc,char **argv)
   Bool input;
   Bool output;
   FILE *file;
+  standtype[NATURAL]=&natural_stand;
+  standtype[WETLAND]=&wetland_stand;
+  standtype[SETASIDE_RF]=&setaside_rf_stand;
+  standtype[SETASIDE_IR]=&setaside_ir_stand;
+  standtype[SETASIDE_WETLAND]=&setaside_wetland_stand;
+  standtype[AGRICULTURE]=&agriculture_stand;
+  standtype[MANAGEDFOREST]=&managedforest_stand;
+  standtype[GRASSLAND]=&grassland_stand;
+  standtype[OTHERS]=&others_stand;
+  standtype[BIOMASS_TREE]=&biomass_tree_stand;
+  standtype[BIOMASS_GRASS]=&biomass_grass_stand;
+  standtype[AGRICULTURE_TREE]=&agriculture_tree_stand;
+  standtype[AGRICULTURE_GRASS]=&agriculture_grass_stand;
+  standtype[WOODPLANTATION]=&woodplantation_stand;
+  standtype[URBAN]=&urban_stand;
+  standtype[KILL]=&kill_stand;
   initconfig(&config);
   progname=strippath(argv[0]);
   if(argc>1)
@@ -53,13 +82,13 @@ int main(int argc,char **argv)
               progname);
       fputs("\n     ",file);
       frepeatch(file,'=',rc);
-      fputs("\n\nPrint input/output files of LPJmL version " LPJ_VERSION "\n\n",file);
+      fprintf(file,"\n\nPrint input/output files of LPJmL version %s\n\n",getversion());
       fprintf(file,USAGE,progname);
       fprintf(file,"\nArguments:\n"
              "-h,--help        print this help text\n"
              "-v,--version     print LPJmL version\n"
-             "-noinput         does not list input data files\n"
-             "-nooutput        does not list output files\n"
+             "-noinput         do not list input data files\n"
+             "-nooutput        do not list output files\n"
              "-nopp            disable preprocessing\n"
              "-pp cmd          set preprocessor program. Default is '" cpp_cmd "'\n"
              "-outpath dir     directory appended to output filenames\n"
@@ -75,7 +104,7 @@ int main(int argc,char **argv)
     }
     else if(!strcmp(argv[1],"-v") || !strcmp(argv[1],"--version"))
     {
-      puts(LPJ_VERSION);
+      puts(getversion());
       return EXIT_SUCCESS;
     }
   }
@@ -98,14 +127,15 @@ int main(int argc,char **argv)
   argv+=iarg-1;
   argc_save=argc;
   argv_save=argv;
-  if(readconfig(&config,scanfcn,NTYPES,NOUT,&argc,&argv,USAGE))
+  if(readconfig(&config,scanfcn,NTYPES,standtype,NSTANDTYPES,NOUT,&argc,&argv,LPJ_USAGE))
   {
-    fail(READ_CONFIG_ERR,FALSE,"Cannot process configuration file");
+    fail(READ_CONFIG_ERR,TRUE,FALSE,"Cannot process configuration file");
   }
   else
   {
     printincludes(config.filename,argc_save,argv_save);
     printfiles(input,output,&config);
   }
+  freeconfig(&config);
   return EXIT_SUCCESS;
 } /* of 'main' */

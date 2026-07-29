@@ -39,8 +39,7 @@ void allocation_today(Stand *setasidestand, /**< pointer to setaside stand */
         p--; /* adjust loop variable */
       }
       else
-       // pft->bm_inc.carbon=pft->bm_inc.nitrogen=0;
-       pft->bm_inc.carbon=0;
+        pft->bm_inc.carbon=0;
     } /* of foreachpft */
     light(setasidestand,fpc_inc,config);
     free(fpc_inc);

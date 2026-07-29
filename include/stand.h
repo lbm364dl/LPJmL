@@ -19,21 +19,23 @@
 
 /* Definition of datatypes */
 
-typedef struct
+struct standtype
 {
   Landusetype landusetype;
   char *name;
+  Real fireduration[2]; /**< fire duration interval (min) */
+  int max_ndayfire;     /**< maximum days for fire */
   void (*newstand)(Stand *);
   void (*freestand)(Stand *);
-  Bool (*fwrite)(FILE *,const Stand *);
-  Bool (*fread)(FILE *,Stand *,Bool);
+  Bool (*fwrite)(Bstruct,const Stand *);
+  Bool (*fread)(Bstruct,Stand *);
   void (*fprint)(FILE *,const Stand *,const Pftpar *);
   Real (*daily)(Stand *,Real,const Dailyclimate *,int,int,Real,
                 Real,Real,Real,
                 Real,Real,int,int,int,Bool,Real,const Config *);
-  Bool (*annual)(Stand *,int,int,int,Bool,Bool,const Config *);
-  void (*dailyfire)(Stand *,Livefuel *,Real,Real,const Dailyclimate *,const Config *);
-} Standtype;
+  Bool (*annual)(Stand *,int,int,Real,int,Bool,Bool,const Config *);
+  void (*dailyfire)(Stand *,Real,Real,Real,Input *,int,int,const Dailyclimate *,const Config *);
+};
 
 struct stand
 {
@@ -45,6 +47,10 @@ struct stand
   Real frac;                  /**< Stand fraction (0..1) */
   Real frac_change;           /**< Expansion fraction due to landuse change (only used for woodplantations) */
   Real frac_g[NSOILLAYER];    /**< fraction of green water in total available soil water, including free water */
+  Real afire_frac;            /**< fraction of grid cell burnt this year */
+  Queue fires;                /**< queue for multi-day fires */
+  Real Hag_Beta;              /* Haggard et al. 2005, effects of slope on runoff 2005*/
+  Real slope_mean;
   int growing_days;           /**< for GRASS days since harvest*/
   int prescribe_landcover;
   void *data;                 /**< stand-specific extensions */
@@ -55,22 +61,23 @@ typedef struct landcover *Landcover;
 
 /* Declaration of functions */
 
-extern Bool fwritestand(FILE *,const Stand *,int);
-extern void fprintstand(FILE *,const Stand *,const Pftpar[],int,int);
-extern int fwritestandlist(FILE *,const Standlist,int);
-extern void fprintstandlist(FILE *,const Standlist,const Pftpar[],int,int);
-extern Stand *freadstand(FILE *,Cell *,const Pftpar[],int,
-                         const Soilpar *,const Standtype [],int,Bool,Bool);
-extern Standlist freadstandlist(FILE *,Cell *,const Pftpar [],int,
-                                const Soilpar *,const Standtype [],int,Bool,Bool);
+extern Bool fwritestand(Bstruct,const char *,const Stand *,int);
+extern void fprintstand(FILE *,const Stand *,const Pftpar[],int);
+extern int fwritestandlist(Bstruct,const char *,const Standlist,int);
+extern void fprintstandlist(FILE *,const Standlist,const Pftpar[],int);
+extern Stand *freadstand(Bstruct,const char *,Cell *,const Pftpar[],int,
+                         const Soilpar *,Standtype **,int,Bool);
+extern Standlist freadstandlist(Bstruct,const char *,Cell *,const Pftpar [],int,
+                                const Soilpar *,Standtype **,int,Bool);
 extern int addstand(const Standtype *,Cell *);
 extern void initstand (Stand *);
 extern void freestand(Stand *);
 extern int delstand(Standlist,int);
 extern void freestandlist(Standlist);
+extern Real standfracsum(const Standlist);
 extern void mixsoil(Stand *,const Stand *,int,int,const Config *);
 extern Bool check_lu(const Standlist ,Real,int,Landusetype,Bool);
-extern void check_stand_fracs(const Cell *,Real);
+extern Bool check_stand_fracs2(const Cell *,Real,Bool,const char *,int);
 extern int findstand(const Standlist, Landusetype, Bool);
 extern int findstandpft(const Standlist,int,Bool);
 extern int findlandusetype(const Standlist,Landusetype);
@@ -81,15 +88,16 @@ extern Stocks standstocks(const Stand *);
 extern void cutpfts(Stand *,const Config *);
 extern Real roughnesslength(const Standlist);
 extern void waterbalance(Stand *,Real [BOTTOMLAYER],Real [BOTTOMLAYER],Real *,Real *,Real,Real,
-                         Real,Real *,Bool);
+                         Real,Real *,Bool,const Config *);
 extern Real water_stressed(Pft *,Real [LASTLAYER],Real,Real,
                            Real,Real *,Real *,Real *,Real,Real,
                            Real,Real,Real,Real *,int,int,int,const Config *);
 
-extern Real infil_perc_irr(Stand *,Real,Real,Real *,int,int,const Config *);
-extern Real infil_perc_rain(Stand *,Real,Real,Real *,int,int,const Config *);
-extern Real albedo_stand(const Stand *);                            
-extern Landcover initlandcover(int,const Config *);
+extern Real infil_perc(Stand *,Real,Real,Real,Real *,int,int,const Config *);
+extern Real plant_gas_transport(Stand*, Real, Real,Real,Real,const Config *);
+extern Real ebullition(Stand*, Real);
+extern Real albedo_stand(const Stand *);
+extern Landcover initlandcover(int,Config *);
 extern Bool readlandcover(Landcover,const Cell *,int,const Config *);
 extern Real *getlandcover(Landcover,int);
 extern void freelandcover(Landcover,Bool);
@@ -98,6 +106,8 @@ extern void freelandcover(Landcover,Bool);
 
 #define getstand(list,index) ((Stand *)getlistitem(list,index))
 #define foreachstand(stand,i,list) for(i=0;i<getlistlen(list) && (stand=getstand(list,i));i++)
+#define check_stand_fracs(cell,lakefrac,isfail) check_stand_fracs2(cell,lakefrac,isfail,__FUNCTION__,__LINE__)
+#define isnatural(stand) (getlandusetype(stand)==NATURAL || getlandusetype(stand)==WETLAND)
 
 /*
  * The following macros allow to call the stand-specific functions like virtual
@@ -105,7 +115,7 @@ extern void freelandcover(Landcover,Bool);
  */
 
 #define daily_stand(stand,co2,climate,day,month,daylength,gtemp_air,gtemp_soil,eeq,par,melt,npft,ncft,year,intercrop,agrfrac,config) stand->type->daily(stand,co2,climate,day,month,daylength,gtemp_air,gtemp_soil,eeq,par,melt,npft,ncft,year,intercrop,agrfrac,config)
-#define annual_stand(stand,npft,ncft,year,isdaily,intercrop,config) stand->type->annual(stand,npft,ncft,year,isdaily,intercrop,config)
-#define dailyfire_stand(stand,livefuel,popdens,avgprec,climate,config) if(stand->type->dailyfire!=NULL) stand->type->dailyfire(stand,livefuel,popdens,avgprec,climate,config)
+#define annual_stand(stand,npft,ncft,natarea,year,isdaily,intercrop,config) stand->type->annual(stand,npft,ncft,natarea,year,isdaily,intercrop,config)
+#define dailyfire_stand(stand,popdens,hign,avgprec,input,cellid,month,climate,config) if(stand->type->dailyfire!=NULL) stand->type->dailyfire(stand,popdens,hign,avgprec,input,cellid,month,climate,config)
 
 #endif

@@ -17,11 +17,14 @@
 #include "lpj.h"
 
 FILE *openinputfile(Header *header,           /**< [out] pointer to file header */
+                    Map **map,                /**< map array or NULL */
+                    Attr **attrs,             /**< pointer to array of attributes or NULL */
+                    int *n_attr,              /**< size of array attribute */
                     Bool *swap,               /**< [out] byte order has to be changed (TRUE/FALSE) */
                     const Filename *filename, /**< [in]  file name */
                     String headername,        /**< [out] clm file header string */
-                    const char *unit,         /**< unit expected or NULL */
-                    Type datatype,            /**< datatype for version 2 files */
+                    const char *unit,         /**< [in] unit expected or NULL */
+                    Type datatype,            /**< [in] datatype for version 2 files */
                     int *version,             /**< [inout] clm file version */
                     size_t *offset,           /**< [in] offset in binary file */
                     Bool isyear,              /**< [in] check for first year (TRUE/FALSE) */
@@ -48,7 +51,7 @@ FILE *openinputfile(Header *header,           /**< [out] pointer to file header 
     header->cellsize_lon=(float)config->resolution.lon;
     header->cellsize_lat=(float)config->resolution.lat;
     /* open description file */
-    file=openmetafile(header,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&var_unit,NULL,NULL,NULL,NULL,NULL,swap,offset,filename->name,isroot(*config));
+    file=openmetafile(header,map,NULL,attrs,n_attr,NULL,NULL,NULL,&var_unit,NULL,NULL,NULL,NULL,NULL,swap,offset,filename->name,isroot(*config));
     if(file==NULL)
     {
       if(isroot(*config))
@@ -60,10 +63,10 @@ FILE *openinputfile(Header *header,           /**< [out] pointer to file header 
                       var_unit,filename->name,unit);
     free(var_unit);
 
-  /*  if(fabs(header->cellsize_lon-config->resolution.lon)>epsilon)
+    if(fabs(header->cellsize_lon-config->resolution.lon)>epsilon)
     {
       if(isroot(*config))
-        fprintf(stderr,"ERROR154: Longitudinal cell size %g different from %g in '%s'.\n",
+        fprintf(stderr,"ERROR154: Longitudinal cell size %.8g different from %.8g in '%s'.\n",
                 header->cellsize_lon,config->resolution.lon,filename->name);
       fclose(file);  
       return NULL;
@@ -71,11 +74,11 @@ FILE *openinputfile(Header *header,           /**< [out] pointer to file header 
     if(fabs(header->cellsize_lat-config->resolution.lat)>epsilon)
     {
       if(isroot(*config))
-        fprintf(stderr,"ERROR154: Latitudinal cell size %g different from %g in '%s'.\n",
+        fprintf(stderr,"ERROR154: Latitudinal cell size %.8g different from %.8g in '%s'.\n",
                 header->cellsize_lat,config->resolution.lat,filename->name);
       fclose(file);  
       return NULL;
-    }*/
+    }
     if(header->firstyear>config->firstyear)
       if(isyear && isroot(*config))
         fprintf(stderr,"WARNING004: First year in '%s'=%d greater than %d.\n",
@@ -84,7 +87,7 @@ FILE *openinputfile(Header *header,           /**< [out] pointer to file header 
        config->nall+config->firstgrid>header->ncell+header->firstcell)
     {
       if(isroot(*config))
-        fprintf(stderr,"ERROR155: gridcells [%d,%d] in '%s' not in [%d,%d].\n",
+        fprintf(stderr,"ERROR155: Grid cells [%d,%d] in '%s' not in [%d,%d].\n",
                 header->firstcell,header->ncell+header->firstcell-1,filename->name,
                 config->firstgrid,config->nall+config->firstgrid-1);
       fclose(file);  
@@ -92,6 +95,12 @@ FILE *openinputfile(Header *header,           /**< [out] pointer to file header 
     }
     return file;
   }
+  if(map!=NULL)
+    *map=NULL;
+  if(attrs!=NULL)
+    *attrs=NULL;
+  if(n_attr!=NULL)
+    *n_attr=0;
   *offset=0; /* no additional offset in CLM file */
   if((file=fopen(filename->name,"rb"))==NULL)
   {
@@ -161,7 +170,7 @@ FILE *openinputfile(Header *header,           /**< [out] pointer to file header 
          config->nall+config->firstgrid>header->ncell+header->firstcell)
       {
         if(isroot(*config))
-          fprintf(stderr,"ERROR155: gridcells [%d,%d] in '%s' not in [%d,%d].\n",
+          fprintf(stderr,"ERROR155: Grid cells [%d,%d] in '%s' not in [%d,%d].\n",
                   header->firstcell,header->ncell+header->firstcell-1,filename->name,
                   config->firstgrid,config->nall+config->firstgrid-1);
         fclose(file);

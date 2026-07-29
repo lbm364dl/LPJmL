@@ -57,7 +57,7 @@ int main(int argc,char **argv)
       if(!strcmp(argv[i],"-h"))
       {
         printf("cfts26_luc2clm (" __DATE__ ") - convert cfts26 and lu5 data files to\n"
-               "       clm data files for LPJmL version " LPJ_VERSION "\n\n");
+               "       clm data files for LPJmL version %s\n\n",getversion());
         printf(USAGE
                "\nArguments:\n"
                "-h               print this help text\n" 
@@ -130,7 +130,11 @@ int main(int argc,char **argv)
     printallocerr("data_out");
     return EXIT_FAILURE;
   }
-  fread(data,sizeof(Data),n*header.nyear,file);
+  if(fread(data,sizeof(Data),n*header.nyear,file)!=1)
+  {
+    fprintf(stderr,"Cannot read data from file %s \n", argv[i]);
+        return EXIT_FAILURE;
+  }
   if(swap)
     for(m=0;m<n*header.nyear;m++)
       for(j=0;j<header.nbands;j++)
@@ -152,7 +156,11 @@ int main(int argc,char **argv)
   for(m=0;m<n*header.nyear;m++)
   {
     fseek(file,sizeof(short)+m*NBANDS_LU*sizeof(short),SEEK_SET);
-    fread(&rbuf,sizeof(short),1,file);
+    if(fread(&rbuf,sizeof(short),1,file)!=1)
+    {
+      fprintf(stderr,"Cannot read data from file %s \n", argv[i+1]);
+          return EXIT_FAILURE;
+    }
     if(swap)
       rbuf=swapshort(rbuf); 
 

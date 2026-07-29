@@ -38,7 +38,6 @@ void freezefrac2soil(Soil *soil,                       /**< pointer to soil to b
     a_wi  = soil->w[layer] * soil->whcs[layer] + soil->ice_depth[layer];
     ua_wi  = soil->wpwps[layer];
     f_wi  = soil->w_fw[layer] + soil->ice_fw[layer];
-
     /* get target ice content */
     ice_target = freezfrac[layer] * allwaterice;
 
@@ -46,7 +45,7 @@ void freezefrac2soil(Soil *soil,                       /**< pointer to soil to b
      * Only if the target ice is higher than the sum of a_wi and ua_wi is the rest distributed to f_wi.
      *
      * This guarantees that free ice can only occur when all other water is also frozen,
-     * which means that water losses due to percolation, evaporation, and transpiration — which only affect liquid water —
+     * which means that water losses due to percolation, evaporation, and transpiration - which only affect liquid water -
      * will always first remove all free water (of any phase) before reducing plant-available water (of any phase).
      * Thus, at any point, free water (of any phase) can only exist if the total amount of water (of any phase) is above field capacity. */
 
@@ -54,7 +53,7 @@ void freezefrac2soil(Soil *soil,                       /**< pointer to soil to b
     if(ice_target > a_wi + ua_wi)
     {
       rest_ice = ice_target - a_wi - ua_wi; /* remaining ice to freeze */
-      f_ice_frac = rest_ice / f_wi; /* fraction of ice in f_wi */
+      f_ice_frac = (f_wi==0) ? 0.0 : rest_ice / f_wi; /* fraction of ice in f_wi */
     }
     else
       f_ice_frac = 0;

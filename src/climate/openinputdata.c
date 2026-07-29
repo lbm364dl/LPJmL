@@ -22,6 +22,7 @@ Bool openinputdata(Infile *file,             /**< pointer to file */
                    const char *unit,         /**< unit or NULL */
                    Type datatype,            /**< datatype for version 2 files */
                    Real scalar,              /**< scalar for version 1 files */
+                   int size,                 /**< size of input vector or 0 for scalar */
                    const Config *config      /**< LPJ configuration */
                   )                          /** \return TRUE on error */
 {
@@ -33,7 +34,7 @@ Bool openinputdata(Infile *file,             /**< pointer to file */
   file->fmt=filename->fmt;
   if(file->fmt==CDF)
   {
-    file->cdf=openinput_netcdf(filename,unit,0,config);
+    file->cdf=openinput_netcdf(filename,unit,size,config);
     if(file->cdf==NULL)
     {
       if(isroot(*config))
@@ -43,7 +44,7 @@ Bool openinputdata(Infile *file,             /**< pointer to file */
   }
   else
   {
-    if((file->file=openinputfile(&header,&file->swap,
+    if((file->file=openinputfile(&header,NULL,NULL,NULL,&file->swap,
                                  filename,headername,unit,datatype,
                                  &version,&offset,FALSE,config))==NULL)
     {
@@ -51,6 +52,7 @@ Bool openinputdata(Infile *file,             /**< pointer to file */
         fprintf(stderr,"ERROR236: Cannot open %s data file.\n",name);
       return TRUE;
     }
+    file->nbands=(size==0) ? 1 : size;
     if(file->fmt==RAW)
     {
       header.nbands=1;
@@ -84,11 +86,11 @@ Bool openinputdata(Infile *file,             /**< pointer to file */
         fprintf(stderr,"WARNING038: Number of years=%d in %s data file '%s' greater than 1, only first year read.\n",
                 header.nyear,name,filename->name);
     }
-    if(header.nbands!=1)
+    if(header.nbands!=file->nbands)
     {
       if(isroot(*config))
-        fprintf(stderr,"ERROR147: Invalid number of bands=%d in %s data file '%s', must be 1.\n",
-               header.nbands,name,filename->name);
+        fprintf(stderr,"ERROR147: Invalid number of bands=%d in %s data file '%s', must be %d.\n",
+                header.nbands,name,filename->name,file->nbands);
       closeinput(file);
       return TRUE;
     }

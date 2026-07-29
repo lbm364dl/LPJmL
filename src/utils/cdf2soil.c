@@ -14,7 +14,7 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 #endif
 
@@ -26,7 +26,7 @@
 
 int main(int argc,char **argv)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int rc,ncid,var_id,i,ndims,dimids[2],latlon_id;
   char name[NC_MAX_NAME+1];
   size_t ilat,ilon;
@@ -110,7 +110,7 @@ int main(int argc,char **argv)
   rc=nc_inq_varid(ncid,var,&var_id);
   if(rc)
   {
-    fprintf(stderr,"ERRO405: No variable '%s' found in '%s'.\n",var,argv[i]);
+    fprintf(stderr,"ERROR405: No variable '%s' found in '%s'.\n",var,argv[i]);
     nc_close(ncid);
     return EXIT_FAILURE;
   }
@@ -257,6 +257,7 @@ int main(int argc,char **argv)
       }
     }
   }
+  free(data);
   fclose(soil);
   rewind(out);
   header.firstcell=0;
@@ -269,6 +270,9 @@ int main(int argc,char **argv)
   header.datatype=(isfloat) ? LPJ_FLOAT : LPJ_SHORT;
   header.cellsize_lon=(lon[lon_len-1]-lon[0])/(lon_len-1);
   header.cellsize_lat=(float)(fabs(lat[lat_len-1]-lat[0])/(lat_len-1));
+  if(header.datatype==LPJ_SHORT && (isfloatcoord(header.cellsize_lon*0.5,header.scalar) || isfloatcoord(header.cellsize_lat*0.5,header.scalar)))
+    fprintf(stderr,"Warning: Cell size (%g,%g) does not allow short datatype for grid with scaling factor %g.\n",
+            header.cellsize_lat,header.cellsize_lon,header.scalar);
   fwriteheader(out,&header,LPJGRID_HEADER,LPJGRID_VERSION);
   fclose(out);
   free(lon);

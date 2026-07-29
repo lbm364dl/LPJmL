@@ -23,14 +23,14 @@ extern Real daily_natural(Stand *,Real,const Dailyclimate *,int,int,
                           Real,
                           Real,Real,
                           Real,Real,Real,int,int,int,Bool,Real,const Config *);
-extern Bool annual_natural(Stand *,int,int,int,Bool,Bool,const Config *);
+extern Bool annual_natural(Stand *,int,int,Real,int,Bool,Bool,const Config *);
 
 extern void dailyfire_natural(Stand *,Output *,Livefuel *,Real *,Real,
                               Dailyclimate,const Pftpar *,int);
 extern void new_natural(Stand *);
 extern void free_natural(Stand *);
-extern Bool fread_natural(FILE *,Stand *,Bool);
-extern Bool fwrite_natural(FILE *,const Stand *);
+extern Bool fread_natural(Bstruct,Stand *);
+extern Bool fwrite_natural(Bstruct,const Stand *);
 extern void fprint_natural(FILE *,const Stand *,const Pftpar *);
 
 #endif

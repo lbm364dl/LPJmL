@@ -36,6 +36,8 @@
 #define ANNUAL_CROP 2
 #define ANNUAL_TREE 3
 #define WP 4
+#define NOPEATLAND 0
+#define PEATLAND 1
 
 #define NO_CALC_SDATE 0
 #define PREC_CALC_SDATE 1
@@ -51,20 +53,6 @@
 #define ALLNATURAL -2 /* ensures summing daily outputs for all natural vegetation pfts */
 #define ALLGRASSLAND -3 /* ensures summing daily outputs for all natural vegetation pfts */
 #define ALLSTAND -4
-
-/* the following constants are used by IMAGE */
-
-#define TROPICAL_BROADLEAVED_EVERGREEN_TREE 0
-#define TROPICAL_BROADLEAVED_RAINGREEN_TREE 1
-#define TEMPERATE_NEEDLELEAVED_EVERGREEN_TREE 2
-#define TEMPERATE_BROADLEAVED_EVERGREEN_TREE 3
-#define TEMPERATE_BROADLEAVED_SUMMERGREEN_TREE 4
-#define BOREAL_NEEDLELEAVED_EVERGREEN_TREE 5
-#define BOREAL_BROADLEAVED_SUMMERGREEN_TREE 6
-#define BOREAL_NEEDLELEAVED_SUMMERGREEN_TREE 7
-#define TROPICAL_HERBACEOUS 8
-#define TEMPERATE_HERBACEOUS 9
-#define POLAR_HERBACEOUS 10
 
 #define TEMPERATE_CEREALS 0
 #define RICE 1

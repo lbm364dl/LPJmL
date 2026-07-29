@@ -41,6 +41,8 @@ extern Bool readintcoord(FILE *,Intcoord *,Bool);
 extern int seekcoord(Coordfile,int);
 extern Bool readcoord(Coordfile,Coord *,const Coord *);
 extern void closecoord(Coordfile);
+extern Bool bstruct_writecoord(Bstruct,const char *,const Coord *);
+extern Bool bstruct_readcoord(Bstruct,const char *,Coord *);
 extern Bool writecoord(FILE *,const Coord *);
 extern Bool writefloatcoord(FILE *,const Coord *);
 extern Real cellarea(const Coord *,const Coord *);
@@ -53,6 +55,7 @@ extern void fprintcoord(FILE *,const Coord *);
 extern int findcoord(const Coord *,const Coord [],const Coord *,int);
 extern int findnextcoord(Real *,const Coord *,const Coord[],int);
 extern Type getcoordtype(const Coordfile);
+extern Bool isfloatcoord(Real,Real);
 
 /* Definition of macros */
 

@@ -9,7 +9,7 @@
 /**     The model simulates vegetation dynamics, hydrology and soil                \n**/
 /**     organic matter dynamics on an area-averaged grid cell basis using          \n**/
 /**     one-year time step. Input parameters are monthly mean air                  \n**/
-/**     temperature, total precipitation and percentage of full sunshine,          \n**/
+/**     temperature, total precipitation, short and longwave radiation,            \n**/
 /**     annual atmospheric CO2 concentration and soil texture class. The           \n**/
 /**     simulation for each grid cell begins from "bare ground",                   \n**/
 /**     requiring a "spin up" (under non-transient climate) of c. 1000             \n**/
@@ -27,8 +27,6 @@
 
 #ifndef LPJ_H /* Already included? */
 #define LPJ_H
-
-#define LPJ_VERSION  "5.9.7"
 
 /* Necessary header files */
 
@@ -50,12 +48,20 @@
 typedef struct cell Cell;   /* forward declaration of cell */
 typedef struct stand Stand; /* forward declaration of stand */
 typedef struct config Config; /* forward declaration of stand */
+typedef struct standtype Standtype; /* forward declaration of standtype */
+typedef struct input Input; /* forward declaration of input */
+typedef struct netcdf_config Netcdf_config; /* forward declaration of NetCDF settings */
 
 /*  Defined header files for LPJ */
 
 #include "conf.h"
+#ifdef USE_TIMING
+#include "timing.h"
+#endif
 #include "list.h"
 #include "types.h"
+#include "hash.h"
+#include "bstruct.h"
 #include "swap.h"
 #include "numeric.h"
 #include "header.h"
@@ -67,6 +73,7 @@ typedef struct config Config; /* forward declaration of stand */
 #include "climbuf.h"
 #include "soil.h"
 #include "pftpar.h"
+#include "hydrotope.h"
 #include "output.h"
 #include "date.h"
 #include "pft.h"
@@ -80,19 +87,20 @@ typedef struct config Config; /* forward declaration of stand */
 #include "coupler.h"
 #include "cropdates.h"
 #include "reservoir.h"
-#include "landuse.h"
 #include "errmsg.h"
 #include "pftlist.h"
+#include "landuse.h"
+#include "icefrac.h"
 #include "spitfire.h"
 #include "units.h"
 #include "stand.h"
+#include "spitfire.h"
 #include "crop.h"
 #include "discharge.h"
 #include "input.h"
 #include "cell.h"
 #include "tree.h"
 #include "biomass_tree.h"
-#include "landuse.h"
 #include "woodplantation.h"
 #include "biomes.h"
 
@@ -112,6 +120,8 @@ typedef struct config Config; /* forward declaration of stand */
 
 #define LPJROOT "LPJROOT"            /* LPJ root directory */
 #define LPJPREP "LPJPREP"            /* preprocessor command */
+#define LPJNOPP "LPJNOPP"            /* disable preprocessor */
+#define LPJPEDANTIC "LPJPEDANTIC"    /* enable pedantic mode */
 #define LPJOPTIONS "LPJOPTIONS"      /* LPJ runtime options */
 #define LPJINPUT "LPJINPATH"         /* path for input files */
 #define LPJOUTPUT "LPJOUTPATH"       /* path for output files */
@@ -123,17 +133,20 @@ extern char *lpj_usage;
 
 /* Declaration of functions */
 
-extern Cell *newgrid(Config *,const Standtype [],int,int,int);
+extern Cell *newgrid(Config *,int,int);
 extern Bool fwriterestart(const Cell[],int,int,int,const char *,Bool,const Config *);
-extern FILE *openrestart(const char *,Config *,int,Bool *);
+extern Bstruct openrestart(const char *,Config *,int,int);
 extern void copyright(const char *);
 extern void printlicense(void);
 extern void help(const char *);
 extern void fprintflux(FILE *file,Flux,Real,int,const Config *);
 extern void fprintcsvflux(FILE *file,Flux,Real,Real,int,const Config *);
 extern void failonerror(const Config *,int,int,const char *);
+extern void fprinttiming(FILE *,double,const Config *);
 #ifdef USE_MPI
 extern Bool iserror(int,const Config *);
+extern void sendhash(const Hash,int,MPI_Comm);
+extern void receivehash(Hash,int,MPI_Comm);
 #else
 #define iserror(rc,config) rc
 #endif
@@ -142,5 +155,6 @@ extern Bool iserror(int,const Config *);
 
 #define printflux(flux,total,year,config) fprintflux(stdout,flux,total,year,config)
 #define printcsvflux(flux,total,scale,year,config) fprintcsvflux(stdout,flux,total,scale,year,config)
+#define printtiming(total,config) fprinttiming(stdout,total,config)
 
 #endif

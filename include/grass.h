@@ -16,6 +16,7 @@
 
 #ifndef GRASS_H /* Already included? */
 #define GRASS_H
+#define grassDM_vol 0.2*0.75/1000*1e9  /*gDM/m-3 Ryser 1996: "The Importance of Tissue Density"*/
 
 /* Definition of constants */
 
@@ -39,8 +40,12 @@ typedef struct
   Grassphyspar nc_ratio; /**< N:C mass ratio (13-15) */
   Real ratio;            /**< C:N ratio of roots relative to leaf */
   Grassphyspar sapl;     /**< sapling */
-  Real sapling_C;  /**< sapling C (gC/m2) */
+  Real sapling_C;        /**< sapling C (gC/m2) */
   Real reprod_cost;      /**< reproduction cost */
+  Real lfmc_a;           /**< parameter for fuel load used by SPITFIRE */
+  Real lfmc_b;           /**< parameter for fuel load used by SPITFIRE */
+  Real lfmc_c;           /**< parameter for fuel load used by SPITFIRE */
+  Real lfmc_d;           /**< parameter for fuel load used by SPITFIRE */
 } Pftgrasspar;
 
 typedef struct
@@ -57,10 +62,10 @@ typedef struct
 /* Declaration of functions */
 
 extern void new_grass(Pft *,int,int,const Config *);
-extern Real npp_grass(Pft *,Real,Real,Real,int);
+extern Real npp_grass(Pft *,Real,Real,Real,const Config *);
 extern Real fpc_grass(Pft *);
 extern Real fpar_grass(const Pft *);
-extern Real alphaa_grass(const Pft *,int,int);
+extern Real alphaa_grass(const Pft *,int);
 extern void litter_update_grass(Litter *, Pft*,Real,const Config *);
 extern Bool allocation_grass(Litter *,Pft *,Real *,const Config *);
 extern void output_daily_grass(const Pft *,Real, Real,const Config *);
@@ -68,15 +73,17 @@ extern Real lai_grass(const Pft *);
 extern Real actual_lai_grass(const Pft *);
 extern Stocks turnover_grass(Litter *,Pft *,Real,const Config *);
 extern void phenology_grass(Pft *,Real,int,Bool,const Config *);
-extern Bool fwrite_grass(FILE *,const Pft *);
-extern void fprint_grass(FILE *,const Pft *,int);
-extern Bool fread_grass(FILE *,Pft *,Bool,Bool);
+extern Bool fwrite_grass(Bstruct,const Pft *);
+extern void fprint_grass(FILE *,const Pft *);
+extern Bool fread_grass(Bstruct,Pft *,Bool);
 extern Bool fscanpft_grass(LPJfile *,Pftpar *,const Config *);
 extern Stocks establishment_grass(Pft *,Real,Real,int);
 extern Real vegc_sum_grass(const Pft *);
+extern Real leafc_grass(const Pft *);
 extern Real vegn_sum_grass(const Pft *);
 extern Real agb_grass(const Pft *);
 extern void mix_veg_grass(Pft *,Real);
+extern Bool mix_veg_stock_grass(Pft *, Pft *, Real, Real,const Config *);
 extern Stocks fire_grass(Pft *,Real *);
 extern void init_grass(Pft *);
 extern void free_grass(Pft *);
@@ -90,9 +97,10 @@ extern Bool annual_grass(Stand *,Pft *,Real *,Bool,const Config *);
 extern void turnover_monthly_grass(Litter *,Pft *,const Config *);
 extern void turnover_daily_grass(Litter *,Pft *,Real,int,Bool,const Config *);
 extern void albedo_grass(Pft *,Real,Real);
+extern void copy_grass(Pft *, const Pft *);
 extern Real nuptake_grass(Pft *,Real *,Real *,int,int,const Config *);
-extern Real ndemand_grass(const Pft *,Real *,Real,Real,Real);
-extern Real vmaxlimit_grass(const Pft *,Real,Real);
+extern Real ndemand_grass(const Pft *,Real *,Real,Real);
+extern Real vmaxlimit_grass(const Pft *,Real);
 
 /* Definition of macros */
 

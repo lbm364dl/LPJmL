@@ -33,7 +33,7 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
                              Real melt,                   /**< melting water (mm/day) */
                              int npft,                    /**< number of natural PFTs */
                              int ncft,                    /**< number of crop PFTs   */
-                             int UNUSED(year),            /**< simulation year (AD) */
+                             int year,                    /**< simulation year (AD) */
                              Bool UNUSED(intercrop),      /**< enabled intercropping */
                              Real UNUSED(agrfrac),        /**< [in] total agriculture fraction (0..1) */
                              const Config *config         /**< LPJ config */
@@ -93,7 +93,7 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
 
   for (l = 0; l < LASTLAYER; l++)
     aet_stand[l] = green_transp[l] = 0;
-  if (config->with_nitrogen && stand->cell->ml.fertilizer_nr!=NULL) /* has to be adapted if fix_fertilization option is added */
+  if (stand->cell->ml.fertilizer_nr!=NULL) /* has to be adapted if fix_fertilization option is added */
   {
     if(day==fertday_biomass(stand->cell,config))
     {
@@ -105,7 +105,7 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
       getoutput(output,NAPPLIED_MG,config)+=fertil*stand->frac;
     } /* end fday==day */
   }
-  if (config->with_nitrogen && stand->cell->ml.manure_nr!=NULL)
+  if (stand->cell->ml.manure_nr!=NULL)
   {
     if(day==fertday_biomass(stand->cell,config))
     {
@@ -170,21 +170,26 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
   }
   irrig_apply -= intercep_stand_blue;
   rainmelt -= (intercep_stand - intercep_stand_blue);
+  irrig_apply=max(0,irrig_apply);
 
   /* soil inflow: infiltration and percolation */
   if (irrig_apply > epsilon)
   {
-    vol_water_enth = climate->temp*c_water+c_water2ice; /* enthalpy of soil infiltration */
-    runoff += infil_perc_irr(stand, irrig_apply, vol_water_enth ,&return_flow_b,npft,ncft,config);
     /* count irrigation events*/
     getoutputindex(output,CFT_IRRIG_EVENTS,index,config)++; /* id is consecutively counted over natural pfts, biomass, and the cfts; ids for cfts are from 12-23, that is why npft (=12) is distracted from id */
   }
 
-  if(climate->prec+melt>0) /* enthalpy of soil infiltration */
-    vol_water_enth = climate->temp*c_water*climate->prec/(climate->prec+melt)+c_water2ice;
+  if((climate->prec+melt+irrig_apply)>0) /* enthalpy of soil infiltration */
+    vol_water_enth = climate->temp*c_water*(climate->prec+irrig_apply)/(climate->prec+irrig_apply+melt)+c_water2ice;
   else
     vol_water_enth=0;
-  runoff += infil_perc_rain(stand, rainmelt, vol_water_enth ,&return_flow_b,npft,ncft,config);
+#ifdef DEBUG
+  String line;
+  if(rainmelt+irrig_apply < 0)
+    fprintf(stderr,"WARNING044: Negative water input to infiltration on day %d of year %d in cell (%s): rainmelt=%g, irrig_apply=%g\n",
+            day,year,sprintcoord(line,&stand->cell->coord),rainmelt, irrig_apply);
+#endif
+  runoff+=infil_perc(stand,(rainmelt+irrig_apply), vol_water_enth,climate->prec,&return_flow_b,npft,ncft,config);
 
   /* Version with daily allocation and grass management */
   /* #ifdef NEW_GRASS */
@@ -193,9 +198,8 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
 
   foreachpft(pft, p, &stand->pftlist)
   {
-    // pft->phen = 1.0; /* phenology is calculated from biomass */
     if (config->gsi_phenology)
-      phenology_gsi(pft, climate->temp, climate->swdown, day,climate->isdailytemp,config);
+      phenology_gsi(pft, climate->temp, climate->swdown, day,climate->isdailytemp,daylength,config);
     else
       leaf_phenology(pft, climate->temp, day,climate->isdailytemp,config);
     cover_stand += pft->fpc * pft->phen;
@@ -223,8 +227,8 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
          getoutputindex(output,PFT_GCGP,nnat + index,config) += gcgp;
       }
     }
-    npp = npp_grass(pft, gtemp_air, gtemp_soil, gpp - rd - pft->npp_bnf,config->with_nitrogen);
-    pft->npp_bnf=0.0;
+    npp = npp_grass(pft, gtemp_air, gtemp_soil, gpp - rd - pft->npp_bnf- pft->npp_nrecovery,config);
+    pft->npp_bnf=pft->npp_nrecovery=0.0;;
     stand->cell->balance.anpp+=npp*stand->frac;
     stand->cell->balance.agpp+=gpp*stand->frac;
     getoutput(output,NPP,config) += npp * stand->frac;
@@ -247,7 +251,7 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
   free(gp_pft);
   /* calculate water balance */
   waterbalance(stand, aet_stand, green_transp, &evap, &evap_blue, wet_all, eeq, cover_stand,
-                 &frac_g_evap, config->rw_manage);
+                 &frac_g_evap,config->rw_manage, config);
 
     /* allocation, turnover and harvest AFTER photosynthesis */
   stand->growing_days = 1;
@@ -308,7 +312,7 @@ Real daily_agriculture_grass(Stand *stand,                /**< stand pointer */
   }
 
   if (data->irrigation && stand->pftlist.n > 0) /*second element to avoid irrigation on just harvested fields */
-    calc_nir(stand,data,gp_stand, wet, eeq,config->others_to_crop);
+    calc_nir(stand,data,gp_stand, wet, eeq,config);
   transp=0;
   forrootsoillayer(l)
   {

@@ -128,7 +128,7 @@ static Bool initirrig(Cell grid[],    /**< Cell grid             */
   int cell,neighb_irrig,rc,*index=NULL,n=0;
   /* open neighbour irrigation file */
   irrig_file.fmt=config->neighb_irrig_filename.fmt;
-  if(openinputdata(&irrig_file,&config->neighb_irrig_filename,"irrigation",NULL,LPJ_INT,1.0,config))
+  if(openinputdata(&irrig_file,&config->neighb_irrig_filename,"irrigation",NULL,LPJ_INT,1.0,0,config))
     return TRUE;
   if(config->neighb_irrig_filename.fmt==CDF)
   {
@@ -235,14 +235,16 @@ static Bool initriver(Cell grid[],Config *config)
     if(index==NULL)
     {
       closeinput_netcdf(drainage.cdf);
+      closeinput_netcdf(river.cdf);
       return TRUE;
     }
     n=getindexsize_netcdf(drainage.cdf);
   }
   else
   {
+
     river.cdf=NULL;
-    if((drainage.file=openinputfile(&header,&drainage.swap,&config->drainage_filename,
+    if((drainage.file=openinputfile(&header,NULL,NULL,NULL,&drainage.swap,&config->drainage_filename,
                                     headername,NULL,LPJ_INT,&version,&offset,FALSE,config))==NULL)
       return TRUE;
     if(header.datatype!=LPJ_INT)
@@ -298,29 +300,18 @@ static Bool initriver(Cell grid[],Config *config)
         free(index);
         return TRUE;
       }
-      if(r.index<-1 ||  r.index>=n)
+      if(r.index>=n)
       {
-        fprintf(stderr,"ERROR203: Invalid drainage  %d of cell %d (%s).\n",
-                r.index,cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
+        fprintf(stderr,"ERROR203: Invalid drainage %d of cell %d (%s), must be <%d.\n",
+                r.index,cell+config->startgrid,sprintcoord(line,&grid[cell].coord),n-1);
         closeinput_netcdf(drainage.cdf);
         closeinput_netcdf(river.cdf);
         free(index);
         return TRUE;
       }
-      if(r.index>0)
-      {
+      if(r.index>=0)
         r.index=index[r.index];
-        if(r.index==-1)
-        {
-          fprintf(stderr,"ERROR203: Invalid drainage %d of cell %d (%s).\n",
-                  r.index,cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
-          closeinput_netcdf(drainage.cdf);
-          closeinput_netcdf(river.cdf);
-          free(index);
-          return TRUE;
-        }
-      }
-      if(readinput_netcdf(drainage.cdf,&len,&grid[cell].coord))
+      if(readinput_netcdf(river.cdf,&len,&grid[cell].coord))
       {
         closeinput_netcdf(drainage.cdf);
         closeinput_netcdf(river.cdf);
@@ -359,7 +350,7 @@ static Bool initriver(Cell grid[],Config *config)
     /* initialize delay queue with the same size */
     if(grid[cell].discharge.queue==NULL) /* has queue been read by freadcell? */
     {
-      grid[cell].discharge.queue=newqueue(ncoeff); /* no, allocate it */
+      grid[cell].discharge.queue=newqueue(1,ncoeff); /* no, allocate it */
       if(grid[cell].discharge.queue==NULL)
       {
         printallocerr("queue");
@@ -378,7 +369,7 @@ static Bool initriver(Cell grid[],Config *config)
       fprintf(stderr,"ERROR256: Size of discharge queue=%d of cell %d in restart file differs from %d, queue is resized and set to zero.\n",
              queuesize(grid[cell].discharge.queue),cell+config->startgrid,ncoeff);
       freequeue(grid[cell].discharge.queue);
-      grid[cell].discharge.queue=newqueue(ncoeff);
+      grid[cell].discharge.queue=newqueue(1,ncoeff);
       if(grid[cell].discharge.queue==NULL)
       {
         printallocerr("queue");

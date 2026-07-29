@@ -53,15 +53,17 @@ int outputsize(int index,     /**< output index */
     case CFT_TRANSP2: case CFT_NIR2:
     case CFT_EVAP2: case CFT_NFERT: case CFT_NFERT2:
       return 2*getnirrig(ncft,config);
-    case FPC:
+    case FPC: case WPC:
       return getnnat(npft,config)+1;
-    case PFT_MORT: case NV_LAI:
+    case PFT_AGTOP_LITTERC:
+      return npft+ncft;
+    case PFT_MORT: case NV_LAI: case PFT_HEIGHT: case GSI_DIFF: case PFT_PHEN:
       return getnnat(npft,config);
     case SOILTEMP: case SWC: case PERC: case WHC_NAT: case WHC_GRASS: case WHC_AGR:
     case KS_NAT: case KS_GRASS: case KS_AGR:
       return NSOILLAYER;
     case SOILC_LAYER: case SOILN_LAYER: case SOILNO3_LAYER: case SOILNH4_LAYER: case SOILC_AGR_LAYER:
-   case RESPONSE_LAYER_AGR: case RESPONSE_LAYER_NV: case CSHIFT_FAST_NV: case CSHIFT_SLOW_NV: case SWC_VOL:
+    case RESPONSE_LAYER_AGR: case RESPONSE_LAYER_NV: case CSHIFT_FAST_NV: case CSHIFT_SLOW_NV: case SWC_VOL:
       return LASTLAYER;
     case GROWING_PERIOD: case CFT_TEMP:case CFT_PREC:
     case CFT_SRAD: case CFT_ABOVEGBMC: case CFT_ABOVEGBMN:
@@ -73,6 +75,10 @@ int outputsize(int index,     /**< output index */
       return (config->nbiomass+config->ngrass*2)*2;
     case WFT_VEGC:
       return config->nwft;
+    case STAND_BURNTAREA: case STAND_FDI: case STAND_SURFACE_FI: case STAND_FIREDURATION:
+      return config->nstand-1;
+    case FUEL:
+      return NFUELCLASS;
     default:
       return 1;
   } /* of 'switch' */
