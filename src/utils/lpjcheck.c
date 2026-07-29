@@ -17,12 +17,24 @@
 #include "grass.h"
 #include "tree.h"
 #include "crop.h"
+#include "natural.h"
+#include "grassland.h"
+#include "biomass_tree.h"
+#include "biomass_grass.h"
+#include "agriculture.h"
+#include "agriculture_grass.h"
+#include "agriculture_tree.h"
+#include "wetland.h"
+#include "urban.h"
 
 #define NTYPES 3 /* number of PFT types: grass, tree, crop */
-#define USAGE "Usage: %s [-h] [-v] [-q] [-nocheck] [-ofiles] [-param] [-vv]\n"\
-              "       [-couple hostname[:port]]\n"\
+#define NSTANDTYPES 16 /* number of stand types / land use types as defined in landuse.h*/
+
+#define USAGE "\nUsage: %s [-h] [-v] [-q] [-nocheck] [-ofiles] [-param] [-vv]\n"\
+              "       [-couple hostname[:port]] [-pedantic]\n"\
               "       [-outpath dir] [-inpath dir] [-restartpath dir]\n"\
               "       [-nopp] [-pp cmd] [[-Dmacro[=value]] [-Idir] ...] filename\n"
+#define LPJ_USAGE USAGE  "\nTry \"%s --help\" for more information.\n"
 
 int main(int argc,char **argv)
 {
@@ -33,13 +45,30 @@ int main(int argc,char **argv)
     {name_tree,fscanpft_tree},
     {name_crop,fscanpft_crop}
   };
+  Standtype *standtype[NSTANDTYPES];
   Config config;         /* LPJ configuration */
   int rc=0;              /* return code of program */
   Bool isout,check;
   const char *progname;
   const char *title[4];
-  String line;
+  String line,line2;
   FILE *file;
+  standtype[NATURAL]=&natural_stand;
+  standtype[WETLAND]=&wetland_stand;
+  standtype[SETASIDE_RF]=&setaside_rf_stand;
+  standtype[SETASIDE_IR]=&setaside_ir_stand;
+  standtype[SETASIDE_WETLAND]=&setaside_wetland_stand;
+  standtype[AGRICULTURE]=&agriculture_stand;
+  standtype[MANAGEDFOREST]=&managedforest_stand;
+  standtype[GRASSLAND]=&grassland_stand;
+  standtype[OTHERS]=&others_stand;
+  standtype[BIOMASS_TREE]=&biomass_tree_stand;
+  standtype[BIOMASS_GRASS]=&biomass_grass_stand;
+  standtype[AGRICULTURE_TREE]=&agriculture_tree_stand;
+  standtype[AGRICULTURE_GRASS]=&agriculture_grass_stand;
+  standtype[WOODPLANTATION]=&woodplantation_stand;
+  standtype[URBAN]=&urban_stand;
+  standtype[KILL]=&kill_stand;
   initconfig(&config);
   isout=check=TRUE;
   progname=strippath(argv[0]);
@@ -53,7 +82,7 @@ int main(int argc,char **argv)
     }
     else if(!strcmp(argv[1],"-v") || !strcmp(argv[1],"--version"))
     {
-      puts(LPJ_VERSION);
+      puts(getversion());
       return EXIT_SUCCESS;
     }
     else if(!strcmp(argv[1],"-h") || !strcmp(argv[1],"--help"))
@@ -66,7 +95,7 @@ int main(int argc,char **argv)
               progname);
       fprintf(file,"\n     ");
       frepeatch(file,'=',rc);
-      fprintf(file,"\n\nChecks syntax of LPJmL version " LPJ_VERSION " configuration (*.cjson) files\n\n");
+      fprintf(file,"\n\nCheck syntax of LPJmL version %s configuration (*.cjson) files\n",getversion());
       fprintf(file,USAGE,progname);
       fprintf(file,"\nArguments:\n"
              "-h,--help           print this help text\n"
@@ -102,16 +131,17 @@ int main(int argc,char **argv)
   {
     snprintf(line,78-10,
              "%s (" __DATE__ ")",progname);
+    snprintf(line2,78-10,"Checking configuration file for LPJmL version %s",getversion());
     title[0]=line;
-    title[1]="Checking configuration file for LPJmL version " LPJ_VERSION;
+    title[1]=line2;
     title[2]="(C) Potsdam Institute for Climate Impact Research (PIK),";
     title[3]="see COPYRIGHT file";
     banner(title,4,78);
   }
 
-  if(readconfig(&config,scanfcn,NTYPES,NOUT,&argc,&argv,USAGE))
+  if(readconfig(&config,scanfcn,NTYPES,standtype,NSTANDTYPES,NOUT,&argc,&argv,LPJ_USAGE))
   {
-    fail(READ_CONFIG_ERR,FALSE,"Cannot process configuration file");
+    fail(READ_CONFIG_ERR,TRUE,FALSE,"Cannot process configuration file");
   }
   else
   {
@@ -137,9 +167,10 @@ int main(int argc,char **argv)
       printf(" MByte\n");
     }
     if(check)
-      rc=(filesexist(config,isout)) ? EXIT_FAILURE : EXIT_SUCCESS;
+      rc=(filesexist(&config,isout)) ? EXIT_FAILURE : EXIT_SUCCESS;
     else
       rc=EXIT_SUCCESS;
   }
+  freeconfig(&config);
   return rc;
 } /* of 'main' */

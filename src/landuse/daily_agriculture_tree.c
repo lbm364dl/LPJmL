@@ -154,11 +154,10 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
   index=agtree(ncft,config->nwptype)+data->irrigation.pft_id-npft+config->nagtree+data->irrigation.irrigation*getnirrig(ncft,config);
 
   /* Apply fertilizers */
-  if(config->with_nitrogen)
-    fertilize_tree(stand,
-                   (stand->cell->ml.fertilizer_nr==NULL) ? 0.0 : stand->cell->ml.fertilizer_nr[data->irrigation.irrigation].ag_tree[data->irrigation.pft_id-npft+config->nagtree],
-                   (stand->cell->ml.manure_nr==NULL) ? 0.0 : stand->cell->ml.manure_nr[data->irrigation.irrigation].ag_tree[data->irrigation.pft_id-npft+config->nagtree],
-                   day, config);
+  fertilize_tree(stand,
+                 (stand->cell->ml.fertilizer_nr==NULL) ? 0.0 : stand->cell->ml.fertilizer_nr[data->irrigation.irrigation].ag_tree[data->irrigation.pft_id-npft+config->nagtree],
+                 (stand->cell->ml.manure_nr==NULL) ? 0.0 : stand->cell->ml.manure_nr[data->irrigation.irrigation].ag_tree[data->irrigation.pft_id-npft+config->nagtree],
+                 day, config);
 
   /* Apply irrigation */
   if(data->irrigation.irrigation && data->irrigation.irrig_amount>epsilon)
@@ -196,7 +195,7 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
   {
     /* calculate old or new phenology */
     if (config->gsi_phenology)
-      phenology_gsi(pft, climate->temp, climate->swdown, day,climate->isdailytemp,config);
+      phenology_gsi(pft, climate->temp, climate->swdown, day,climate->isdailytemp,daylength,config);
     else
       leaf_phenology(pft,climate->temp,day,climate->isdailytemp,config);
     sprink_interc=(data->irrigation.irrig_system==SPRINK) ? 1 : 0;
@@ -209,21 +208,25 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
 
   irrig_apply-=intercep_stand_blue;
   rainmelt-=(intercep_stand-intercep_stand_blue);
+  irrig_apply=max(0,irrig_apply);
 
   /* soil inflow: infiltration and percolation */
   if(irrig_apply>epsilon)
   {
-      vol_water_enth = climate->temp*c_water+c_water2ice; /* enthalpy of soil infiltration */
-      runoff+=infil_perc_irr(stand,irrig_apply,vol_water_enth,&return_flow_b,npft,ncft,config);
       /* count irrigation events*/
       getoutputindex(output,CFT_IRRIG_EVENTS,index,config)++;
   }
 
-  if(climate->prec+melt>0)  /* enthalpy of soil infiltration */
-    vol_water_enth = climate->temp*c_water*climate->prec/(climate->prec+melt)+c_water2ice;
+  if((climate->prec+melt+irrig_apply)>0) /* enthalpy of soil infiltration */
+    vol_water_enth = climate->temp*c_water*(climate->prec+irrig_apply)/(climate->prec+irrig_apply+melt)+c_water2ice;
   else
     vol_water_enth=0;
-  runoff+=infil_perc_rain(stand,rainmelt,vol_water_enth,&return_flow_b,npft,ncft,config);
+#ifdef DEBUG
+  if(rainmelt+irrig_apply < 0)
+    fprintf(stderr,"WARNING044: Negative water input to infiltration on day %d of year %d in cell (%s): rainmelt=%g, irrig_apply=%g\n",
+            day,year,sprintcoord(line,&stand->cell->coord),rainmelt, irrig_apply);
+#endif
+  runoff+=infil_perc(stand,(rainmelt+irrig_apply), vol_water_enth,climate->prec,&return_flow_b,npft,ncft,config);
 
   foreachpft(pft,p,&stand->pftlist)
   {
@@ -247,14 +250,15 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
       getoutputindex(output,PFT_GCGP_COUNT,nnat+index,config)++;
       getoutputindex(output,PFT_GCGP,nnat+index,config)+=gc_pft/gp_pft[getpftpar(pft,id)];
     }
-    npp=npp(pft,gtemp_air,gtemp_soil,gpp-rd-pft->npp_bnf,config->with_nitrogen);
+    npp=npp(pft,gtemp_air,gtemp_soil,gpp-rd-pft->npp_bnf-pft->npp_nrecovery,config);
     pft->npp_bnf=0.0;
+    pft->npp_bnf=pft->npp_nrecovery=0.0;
 #ifdef DEBUG2
     printf("day=%d, irrig=%d, npp=%g, c_fruit=%g,phen=%g\n",day,data->irrigation.irrigation,npp,tree->fruit.carbon,pft->phen);
     printf("tmin=%g, tmax=%g, light=%g, wscal=%g\n",pft->phen_gsi.tmin,pft->phen_gsi.tmax,pft->phen_gsi.light,pft->phen_gsi.wscal);
     if(istree(pft))
     {
-      treepar=tree->data;
+      treepar=pft->par->data;
       printf("%s %d %d\n",pft->par->name,data->age,treepar->rotation);
     }
 #endif
@@ -287,7 +291,6 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
           }
           break;
         case EVERGREEN:
-    //         if(pft->gdd>0 && pft->gdd<1/pft->par->ramp)
           if(pft->gdd>0)
           {
 
@@ -328,7 +331,7 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
   free(gp_pft);
   /* soil outflow: evap and transpiration */
   waterbalance(stand,aet_stand,green_transp,&evap,&evap_blue,wet_all,eeq,cover_stand,
-               &frac_g_evap,config->rw_manage);
+               &frac_g_evap,config->rw_manage,config);
 
   transp=0;
   forrootsoillayer(l)
@@ -415,11 +418,9 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
     else
       fprintf(stderr,"ERROR124: Cotton PFT not found in cell %s.\n",sprintcoord(line,&stand->cell->coord));
     update_irrig(stand,agtree(ncft,config->nwptype)+data->irrigation.pft_id-npft,ncft,config);
-    //if(setaside(stand->cell,stand,config->pftpar,TRUE,npft,data->irrigation,year))
-    // return TRUE;
   }
   if(data->irrigation.irrigation && stand->pftlist.n>0) /*second element to avoid irrigation on just harvested fields */
-    calc_nir(stand,&data->irrigation,gp_stand,wet,eeq,config->others_to_crop);
+    calc_nir(stand,&data->irrigation,gp_stand,wet,eeq,config);
   free(wet);
 
   return runoff;

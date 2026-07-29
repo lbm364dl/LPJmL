@@ -48,9 +48,11 @@ void drain(Cell grid[],         /**< Cell array */
           )
 {
   int count,cell,i,j,iter,t,ncoeff;
-  Real fin,*out,*in;
+  Real fin,*out,*in,dis;
   Real fout_lake,irrig_to_river;
-
+#ifdef USE_TIMING
+  double tstart;
+#endif
   count=(int)(1.0/TSTEP); /* calculate number of iterations */
   out=(Real *)pnet_output(config->route);
   in=(Real *)pnet_input(config->route);
@@ -72,7 +74,7 @@ void drain(Cell grid[],         /**< Cell array */
                                                        grid[cell].ml.resdata->reservoir.capacity);
       }
       else
-        grid[cell].discharge.dmass_lake+=grid[cell].discharge.drunoff*grid[cell].coord.area;
+        grid[cell].discharge.dmass_lake+=grid[cell].discharge.drunoff*grid[cell].coord.area;   //WHY BOTH mfin AND dmass_lake
     }
 
     /* release from reservoirs*/
@@ -115,6 +117,14 @@ void drain(Cell grid[],         /**< Cell array */
 
   grid-=config->startgrid-config->firstgrid; /* adjust first index of grid
                                               array needed for pnet library */
+#ifdef USE_TIMING
+#ifdef USE_MPI
+  timing_start(tstart);
+  MPI_Barrier(config->comm);
+  timing_stop(MPI_BARRIER_FCN,tstart);
+#endif
+  timing_start(tstart);
+#endif
   for(iter=0;iter<count;iter++)
   {
     for(i=pnet_lo(config->route);i<=pnet_hi(config->route);i++)
@@ -123,8 +133,10 @@ void drain(Cell grid[],         /**< Cell array */
       grid[i].discharge.fout=0;
       ncoeff=queuesize(grid[i].discharge.queue);
       for(t=0;t<ncoeff;t++)
-        grid[i].discharge.fout+=getqueue(grid[i].discharge.queue,t)*grid[i].discharge.tfunct[t];
-
+      {
+        getqueue(grid[i].discharge.queue,&dis,t);
+        grid[i].discharge.fout+=dis*grid[i].discharge.tfunct[t];
+      }
       grid[i].discharge.dmass_river-=grid[i].discharge.fout;
       grid[i].discharge.dfout+=grid[i].discharge.fout;
       getoutput(&grid[i].output,DISCHARGE,config)+=grid[i].discharge.fout;
@@ -197,8 +209,8 @@ void drain(Cell grid[],         /**< Cell array */
   
       /* the remainder enters the river system */
       grid[i].discharge.dmass_river+=fin;
-      putqueue(grid[i].discharge.queue,fin);
-      grid[i].discharge.dmass_sum+=grid[i].discharge.dmass_river+grid[i].discharge.dmass_lake+sumqueue(grid[i].discharge.queue);
+      putqueue(grid[i].discharge.queue,&fin);
+      grid[i].discharge.dmass_sum+=grid[i].discharge.dmass_river+grid[i].discharge.dmass_lake+sumqueue(grid[i].discharge.queue,0);
 
 
     } /* of 'for(i=...)' */
@@ -228,5 +240,7 @@ void drain(Cell grid[],         /**< Cell array */
     }
     getoutput(&grid[cell].output,WD_LOCAL,config)+=grid[cell].discharge.withdrawal/grid[cell].coord.area; /* withdrawal in local cell */
   }
-
+#ifdef USE_TIMING
+  timing_stop(DRAIN_FCN,tstart);
+#endif
 }  /* of 'drain' */

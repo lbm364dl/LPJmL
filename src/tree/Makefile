@@ -24,9 +24,9 @@ OBJS    = lai_tree.$O turnover_tree.$O npp_tree.$O phenology_tree.$O\
           veg_sum_tree.$O adjust_tree.$O mix_veg_tree.$O fprintpar_tree.$O\
           alphaa_tree.$O livefuel_consum_tree.$O reduce_tree.$O\
           annual_tree.$O coppice_tree.$O turnover_monthly_tree.$O\
-          albedo_tree.$O turnover_daily_tree.$O agb_tree.$O\
+          albedo_tree.$O turnover_daily_tree.$O agb_tree.$O leafc_tree.$O\
           litter_update_fire_tree.$O nitrogen_allocation_tree.$O nuptake_tree.$O\
-          ndemand_tree.$O vmaxlimit_tree.$O harvest_tree.$O
+          ndemand_tree.$O vmaxlimit_tree.$O copy_tree.$O harvest_tree.$O
 
 
 INC     = ../../include
@@ -38,7 +38,7 @@ HDRS    = $(INC)/buffer.h $(INC)/coord.h $(INC)/lpj.h $(INC)/pftlist.h\
           $(INC)/pftpar.h $(INC)/types.h $(INC)/tree.h $(INC)/output.h\
           $(INC)/errmsg.h $(INC)/numeric.h $(INC)/param.h\
           $(INC)/conf.h $(INC)/swap.h $(INC)/soilpar.h $(INC)/stand.h\
-          $(INC)/list.h $(INC)/cell.h  $(INC)/units.h\
+          $(INC)/list.h $(INC)/cell.h  $(INC)/units.h $(INC)/bstruct.h\
           $(INC)/config.h $(INC)/landuse.h $(INC)/spitfire.h\
           $(INC)/climbuf.h $(INC)/discharge.h $(INC)/biomass_tree.h
 

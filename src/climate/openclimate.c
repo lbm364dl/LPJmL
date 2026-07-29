@@ -20,14 +20,18 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
                  const Filename *filename, /**< file name and format */
                  const char *units,        /**< units in NetCDF file or NULL */
                  Type datatype,            /**< data type in binary file */
+                 int delta_year,           /**< time step (yrs) */
                  Real scalar,              /**< scaling factor */
-                 const Config *config      /**< LPJ configuration */
+                 Bool check,               /**< check title (TRUE/FALSE) */
+                 Config *config            /**< LPJ configuration */
                 )                          /** \return TRUE on error */
 {
   Header header;
   String headername;
-  int last,version,count,nbands;
+  int last,version,nbands,rc;
   char *s;
+  Attr *attrs=NULL;
+  int n_attr;
   size_t offset,filesize;
   file->fmt=filename->fmt;
   if(filename->fmt==FMS)
@@ -51,10 +55,15 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
       file->time_step=MONTH;
       file->n=NMONTH*config->ngridcell;
     }
+    else if(nbands==1)
+    {
+      file->time_step=YEAR;
+      file->n=config->ngridcell;
+    }
     else
     {
       if(isroot(*config))
-        fprintf(stderr,"ERROR127: Invalid number of bands %d received from socket, must be 12 or 365.\n",
+        fprintf(stderr,"ERROR127: Invalid number of bands %d received from socket, must be 1,12 or 365.\n",
                 nbands);
       return TRUE;
     }
@@ -83,18 +92,19 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
       }
       if(isroot(*config))
       {
-        count=snprintf(NULL,0,file->filename,file->firstyear);
-        if(count==-1)
-          return TRUE;
-        s=malloc(count+1);
+        s=getsprintf(file->filename,file->firstyear);
         check(s);
-        snprintf(s,count+1,file->filename,file->firstyear);
-        openclimate_netcdf(file,s,filename->time,filename->var,filename->unit,units,config);
+        rc=openclimate_netcdf(file,NULL,&attrs,&n_attr,s,filename,units,config);
+        checktitle(attrs,n_attr,s,&config->climate,isroot(*config));
+        freeattrs(attrs,n_attr);
         free(s);
       }
 #ifdef USE_MPI
+      MPI_Bcast(&rc,1,MPI_INT,0,config->comm);
       MPI_Bcast(&file->time_step,1,MPI_INT,0,config->comm);
 #endif
+      if(rc)
+        return TRUE;
       closeclimate_netcdf(file,isroot(*config));
       if(file->time_step==MISSING_TIME)
       {
@@ -120,18 +130,15 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
     }
     else
     {
-      if(mpi_openclimate_netcdf(file,filename,units,config))
+      if(mpi_openclimate_netcdf(file,NULL,&attrs,&n_attr,filename,units,config))
         return TRUE;
+      if(check)
+        checktitle(attrs,n_attr,filename->name,&config->climate,isroot(*config));
+      freeattrs(attrs,n_attr);
       if(file->time_step==MISSING_TIME)
       {
         if(isroot(*config))
           fprintf(stderr,"ERROR436: Time axis missing in '%s'.\n",filename->name);
-        return TRUE;
-      }
-      if(file->time_step==YEAR)
-      {
-        if(isroot(*config))
-          fprintf(stderr,"ERROR438: Yearly time step not allowed in '%s'.\n",filename->name);
         return TRUE;
       }
       if(file->var_len>1)
@@ -144,11 +151,14 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
       return FALSE;
     }
   }
-  if((file->file=openinputfile(&header,&file->swap,
+  if((file->file=openinputfile(&header,NULL,&attrs,&n_attr,&file->swap,
                                filename,
                                headername,units,datatype,
-                               &version,&offset,TRUE,config))==NULL)
+                               &version,&offset,!config->isanomaly,config))==NULL)
     return TRUE;
+  if(check)
+    checktitle(attrs,n_attr,filename->name,&config->climate,isroot(*config));
+  freeattrs(attrs,n_attr);
   if (header.order!=CELLYEAR)
   {
     if(isroot(*config))
@@ -164,16 +174,16 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
     fclose(file->file);
     return TRUE;
   }
-  if(header.timestep!=1)
-  {
-    if(isroot(*config))
-      fprintf(stderr,"ERROR127: Invalid time step %d in '%s', must be 1.\n",
-              header.timestep,filename->name);
-    fclose(file->file);
-    return TRUE;
-  }
   if(filename->fmt==META || (filename->fmt==CLM && version==4))
   {
+    if(header.timestep!=delta_year)
+    {
+      if(isroot(*config))
+        fprintf(stderr,"ERROR127: Invalid time step %d in '%s', must be %d.\n",
+                header.timestep,filename->name,delta_year);
+      fclose(file->file);
+      return TRUE;
+    }
     if(header.nbands>1)
     {
       if(isroot(*config))
@@ -182,20 +192,20 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
       fclose(file->file);
       return TRUE;
     }
-    if(header.nstep!=NMONTH && header.nstep!=NDAYYEAR)
+    if(header.nstep!=NMONTH && header.nstep!=NDAYYEAR && header.nstep!=1)
     {
       if(isroot(*config))
-        fprintf(stderr,"ERROR127: Invalid number of steps %d in '%s', must be 12 or 365.\n",
+        fprintf(stderr,"ERROR127: Invalid number of steps %d in '%s', must be 1,12 or 365.\n",
                 header.nstep,filename->name);
       fclose(file->file);
       return TRUE;
     }
     header.nbands=header.nstep;
   }
-  else if(filename->fmt!=RAW && header.nbands!=NMONTH && header.nbands!=NDAYYEAR)
+  else if(filename->fmt!=RAW && header.nbands!=NMONTH && header.nbands!=NDAYYEAR && header.nstep!=1)
   {
     if(isroot(*config))
-      fprintf(stderr,"ERROR127: Invalid number of bands %d in '%s', must be 12 or 365.\n",
+      fprintf(stderr,"ERROR127: Invalid number of bands %d in '%s', must be 1, 12 or 365.\n",
               header.nbands,filename->name);
     fclose(file->file);
     return TRUE;
@@ -221,7 +231,24 @@ Bool openclimate(Climatefile *file,        /**< pointer to climate file */
         fprintf(stderr,"WARNING032: File size of '%s' does not match nyear*ncell*nbands.\n",filename->name);
     }
   }
-  file->time_step=(header.nbands==NDAYYEAR) ? DAY : MONTH;
+  switch(header.nbands)
+  {
+    case 1:
+      file->time_step=YEAR;
+      break;
+    case NMONTH:
+      file->time_step=MONTH;
+      break;
+    case NDAYYEAR:
+      file->time_step=DAY;
+      break;
+    default:
+      if(isroot(*config))
+        fprintf(stderr,"ERROR127: Invalid number of bands %d in '%s', must be 1, 12 or 365.\n",
+                header.nbands,filename->name);
+      fclose(file->file);
+      return TRUE;
+  }
   file->size=header.ncell*header.nbands*typesizes[file->datatype];
   file->n=header.nbands*config->ngridcell;
   file->isopen=TRUE;

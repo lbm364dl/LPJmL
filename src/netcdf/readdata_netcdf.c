@@ -16,7 +16,7 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 #endif
 
@@ -27,7 +27,7 @@ Bool readdata_netcdf(const Climatefile *file, /**< climate data file */
                      const Config *config     /**< LPJmL configuration */
                     )                         /** \return TRUE on error */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int cell,rc,start;
   size_t i;
   float *f;
@@ -90,7 +90,7 @@ Bool readdata_netcdf(const Climatefile *file, /**< climate data file */
 
         for(i=0;i<file->var_len;i++)
         {
-          if(!grid[cell].skip && f[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]]==file->missing_value.f)
+          if(!grid[cell].skip && ismissingvalue(f[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]],file->missing_value.f))
           {
             fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
                     cell+config->startgrid,sprintcoord(line,&grid[cell].coord));

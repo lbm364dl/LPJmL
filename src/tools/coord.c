@@ -80,6 +80,7 @@ Coordfile opencoord(const Filename *filename, /**< filename of coord file */
     coordfile->cellsize.lat=header.cellsize_lat;
     coordfile->datatype=header.datatype;
     coordfile->scalar=header.scalar;
+    coordfile->fmt=filename->fmt;
     if(header.nbands!=2)
     {
       if(isout)
@@ -184,7 +185,6 @@ Coordfile opencoord(const Filename *filename, /**< filename of coord file */
         fprintf(stderr,"WARNING032: File size of '%s' does not match nyear*ncell*nbands.\n",filename->name);
     }
   }
-  coordfile->fmt=filename->fmt;
   return coordfile;
 } /* of 'opencoord' */
 
@@ -307,6 +307,32 @@ Bool readcoord(Coordfile coordfile, /**< open coord file */
   coord->area=cellarea(coord,resol);
   return FALSE;
 } /* of 'readcoord' */
+
+Bool bstruct_writecoord(Bstruct file,      /**< pointer to restart file */
+                        const char *name,  /**< name of object */
+                        const Coord *coord /**< cell coordinate written to file */
+                       )                   /** \return FALSE for successful write */
+{
+  if(bstruct_writebeginstruct(file,name))
+    return TRUE;
+  bstruct_writereal(file,"lon",coord->lon);
+  bstruct_writereal(file,"lat",coord->lat);
+  return bstruct_writeendstruct(file);
+} /* of 'bstruct_writecoord' */
+
+Bool bstruct_readcoord(Bstruct file,     /**< pointer to restart file */
+                       const char *name, /**< name of object */
+                       Coord *coord      /**< cell coordinate read from file */
+                      )                  /** \return FALSE for successful read */
+{
+  if(bstruct_readbeginstruct(file,name))
+    return TRUE;
+  if(bstruct_readreal(file,"lon",&coord->lon))
+    return TRUE;
+  if(bstruct_readreal(file,"lat",&coord->lat))
+    return TRUE;
+  return bstruct_readendstruct(file,name);
+} /* of 'bstruct_readcoord' */
 
 Bool writecoord(FILE *file,        /**< pointer to binary file */
                 const Coord *coord /**< cell coordinate written to file */
@@ -435,3 +461,10 @@ int findnextcoord(Real *dist_min,     /**< [out] minimum distance */
   *dist_min=sqrt(*dist_min);
   return i_min;
 } /* of 'findnextcoord' */
+
+Bool isfloatcoord(Real coord, /**< coordinate (deg) */
+                  Real scale  /**< scale factor */
+                 )            /** \return must be float coord  to resolve coordinate (TRUE/FALSE) */
+{
+  return (short)(coord/scale)*scale!=coord;
+} /* of 'isfloatcoord' */

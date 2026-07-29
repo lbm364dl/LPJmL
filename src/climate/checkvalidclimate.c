@@ -87,51 +87,35 @@ Bool checkvalidclimate(Climate *climate, /**< pointer to climate data */
     return TRUE;
   if(checkvalid(&climate->file_prec,config->prec_filename.name,grid,config))
     return TRUE;
-  switch(config->with_radiation)
-  {
-    case RADIATION: case RADIATION_LWDOWN:
-      if(checkvalid(&climate->file_lwnet,config->lwnet_filename.name,grid,config))
-        return TRUE;
-      if(checkvalid(&climate->file_swdown,config->swdown_filename.name,grid,config))
-        return TRUE;
-      break;
-    case CLOUDINESS:
-      if(checkvalid(&climate->file_cloud,config->cloud_filename.name,grid,config))
-        return TRUE;
-      break;
-    case RADIATION_SWONLY:
-      if(checkvalid(&climate->file_swdown,config->swdown_filename.name,grid,config))
-        return TRUE;
-      break;
-  }
+  if(checkvalid(&climate->file_lwnet,config->lwnet_filename.name,grid,config))
+    return TRUE;
+  if(checkvalid(&climate->file_swdown,config->swdown_filename.name,grid,config))
+    return TRUE;
   if(config->wet_filename.name!=NULL)
   {
     if(checkvalid(&climate->file_wet,config->wet_filename.name,grid,config))
       return TRUE;
   }
-  if(config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX || config->with_nitrogen)
-  {
-    if(checkvalid(&climate->file_wind,config->wind_filename.name,grid,config))
-      return TRUE;
-  }
-  if(config->fire==SPITFIRE)
+  if(checkvalid(&climate->file_wind,config->wind_filename.name,grid,config))
+    return TRUE;
+  if(config->fire==SPITFIRE_TAMP)
   {
     if(checkvalid(&climate->file_tamp,config->tamp_filename.name,grid,config))
       return TRUE;
   }
-  if(config->fire==SPITFIRE_TMAX)
+  if(config->fire==SPITFIRE)
   {
     if(checkvalid(&climate->file_tmin,config->tmin_filename.name,grid,config))
       return TRUE;
     if(checkvalid(&climate->file_tmax,config->tmax_filename.name,grid,config))
       return TRUE;
   }
-  if(config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX)
+  if(isspitfire(config))
   {
     if(checkvalid(&climate->file_lightning,config->lightning_filename.name,grid,config))
       return TRUE;
   }
-  if(config->with_nitrogen==LIM_NITROGEN)
+  if(!config->unlim_nitrogen)
   {
     if(checkvalid(&climate->file_no3deposition,config->no3deposition_filename.name,grid,config))
       return TRUE;

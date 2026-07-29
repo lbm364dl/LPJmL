@@ -17,8 +17,8 @@
 
 /* Definitions of datatypes */
 
-typedef enum {NATURAL,SETASIDE_RF,SETASIDE_IR,AGRICULTURE,MANAGEDFOREST,
-              GRASSLAND,OTHERS,BIOMASS_TREE,BIOMASS_GRASS,AGRICULTURE_TREE,AGRICULTURE_GRASS,WOODPLANTATION,KILL} Landusetype;
+typedef enum {NATURAL,WETLAND,SETASIDE_RF,SETASIDE_IR,SETASIDE_WETLAND,AGRICULTURE,MANAGEDFOREST,
+              GRASSLAND,OTHERS,BIOMASS_TREE,BIOMASS_GRASS,AGRICULTURE_TREE,AGRICULTURE_GRASS,URBAN,WOODPLANTATION,KILL} Landusetype;
 
 typedef struct landuse *Landuse;
 
@@ -30,6 +30,7 @@ typedef struct
   Real biomass_tree;
   Real *ag_tree;
   Real woodplantation;
+  Real urban;
 } Landfrac;
 
 typedef struct
@@ -72,6 +73,7 @@ typedef struct
   Cropdates *cropdates;
   Real cropfrac_rf;       /**< rain-fed crop fraction (0..1) */
   Real cropfrac_ir;       /**< irrigated crop fraction (0..1) */
+  Real cropfrac_wl;       /**< crop fraction on wetland(0..1) */
   int *sowing_month;      /**< sowing month (index of month, 1..12), rainfed, irrigated*/
   int *gs;                /**< length of growing season (number of consecutive months, 0..11)*/
   int sowing_day_cotton[2];
@@ -106,22 +108,26 @@ typedef struct
 #define agtree(ncft,nwpt) (ncft+4+nwpt)
 #define getnnat(npft,config) (npft-config->nbiomass-config->nagtree-config->nwft)
 #define getnirrig(ncft,config) (ncft+NGRASS+NBIOMASSTYPE+config->nagtree+config->nwptype)
-#define isagriculture(type) (type==AGRICULTURE || type==OTHERS || type==SETASIDE_RF || type==SETASIDE_IR || type==AGRICULTURE_TREE || type==AGRICULTURE_GRASS)
+#define getlandusetype(stand) (stand)->type->landusetype
+#define isagriculture(stand) (getlandusetype(stand)==AGRICULTURE || getlandusetype(stand)==OTHERS || getlandusetype(stand)==SETASIDE_RF || getlandusetype(stand)==SETASIDE_IR || getlandusetype(stand)==AGRICULTURE_TREE || getlandusetype(stand)==AGRICULTURE_GRASS ||getlandusetype(stand) ==SETASIDE_WETLAND)
 
 /* Declaration of functions */
 
-extern Landuse initlanduse(const Config *);
+extern Landuse initlanduse(int,int,Config *);
 extern void freelanduse(Landuse,const Config *);
 extern Bool getintercrop(const Landuse);
 extern Landfrac *newlandfrac(int,int);
-extern void initlandfracitem(Landfrac *,int,int);
-extern void initlandfrac(Landfrac [2],int,int);
+extern void initlandfracitem(Landfrac *,Real,int,int);
+extern void initlandfrac(Landfrac [2],Real,int,int);
 extern void scalelandfrac(Landfrac [2],int,int,Real);
 extern void freelandfrac(Landfrac *);
-extern Bool fwritelandfrac(FILE *,const Landfrac [2],int,int);
+extern Bool fwritelandfrac(Bstruct ,const char *,const Landfrac [2],int,int);
 extern void fprintlandfrac(FILE *,const Landfrac *,int,int);
-extern Bool freadlandfrac(FILE *,Landfrac [2],int,int,Bool);
-extern Bool readlandfracmap(Landfrac *,const int [],int,const Real [],int *,int,int);
+extern Irrig_system *newirrigsystem(int,int);
+extern void initirrigsystem(Irrig_system *,IrrigationType,int,int);
+extern Bool freadlandfrac(Bstruct,const char *,Landfrac [2],int,int);
+extern Bool readlandfracmap(Landfrac *,const int [],int,const Real [],int *,int,int,int);
+extern void fprintlandfrac(FILE *,const Landfrac *,int,int);
 extern Real landfrac_sum(const Landfrac [2],int,int,Bool);
 extern Real crop_sum_frac(Landfrac [2],int,int,Real,Bool);
 extern Stocks cultivate(Cell *,Bool,int,Bool,Stand *,
@@ -130,26 +136,29 @@ extern Stocks cultivate(Cell *,Bool,int,Bool,Stand *,
 extern void deforest_for_timber(Cell *,Real,int,Bool,int,Real,int,const Config *);
 #endif
 extern void reclaim_land(const Stand *, Stand *,Cell *,Bool,int,const Config *);
-extern Bool getlanduse(Landuse,Cell *,int,int,int,const Config *);
+extern void remove_vegetation_copy(Soil *soil,const Stand *,Cell *,Real,Bool,Bool,const Config *);
+extern Bool getlanduse(Landuse,Cell *,int,int,int,int,const Config *);
 extern void landusechange(Cell *,int,int,Bool,int,const Config *);
-extern Bool setaside(Cell *,Stand *,Bool,Bool,int,Bool,int,int,const Config *);
+extern void mixsoilenergy(Stand *,const Stand *,const Config *config);
+extern Bool setaside(Cell *,Stand *,Bool,Bool,int,int,Bool,Bool,int,const Config *);
 extern void sowingcft(Stocks *,Bool *,Cell *,Bool,Bool,Bool,int,int,int,int,int,Bool,const Config *);
 extern Stocks sowing_season(Cell *,int,int,int,Real,int,const Config *);
 extern Stocks sowing_prescribe(Cell *,int,int,int,int,const Config *);
 extern Stocks sowing(Cell *,Real,int,int,int,int,const Config *);
-extern void deforest(Cell *,Real,Bool,int,Bool,Bool,int,int,Real,const Config *);
-extern void calc_nir(Stand *,Irrigation *,Real,Real [],Real,Bool);
+extern void deforest(Cell *,Real,Bool,int,Bool,Bool,Bool,int,int,Real,const Config *);
+extern void calc_nir(Stand *,Irrigation *,Real,Real [],Real,const Config *);
 extern Real rw_irrigation(Stand *,Real,const Real [],Real,const Config *);
 extern void irrig_amount_river(Cell *,const Config *);
 extern void irrig_amount(Stand *,Irrigation *,int,int,int,const Config *);
 extern void mixsetaside(Stand *,Stand *,Bool,int,int,const Config *);
 extern void set_irrigsystem(Stand *,int,int,int,const Config *);
 extern void init_irrigation(Irrigation *);
-extern Bool fwrite_irrigation(FILE *,const Irrigation *);
+extern Bool fwrite_irrigation(Bstruct,const char *,const Irrigation *);
 extern void fprint_irrigation(FILE *,const Irrigation *,const Pftpar *);
-extern Bool fread_irrigation(FILE *,Irrigation *,Bool);
+extern Bool fread_irrigation(Bstruct,const char *,Irrigation *);
 extern Harvest harvest_stand(Output *,Stand *,Real,const Config *);
-extern int *scancftmap(LPJfile *,int *,const char *,Bool,int,int,const Config *);
+extern int *scancftmap(LPJfile *,int *,const char *,Bool,Bool,Bool,int,int,const Config *);
+extern int *defaultcftmap(int *,const char *,Bool,Bool,int,int,const Config *);
 extern int *fscanagtreemap(LPJfile *,const char *,int,const Config *);
 extern Bool fscanmowingdays(LPJfile *,Config *);
 extern void tillage(Soil *, Real);
@@ -161,9 +170,16 @@ extern Bool isirrigevent(const Stand *);
 extern int fertday_biomass(const Cell *,const Config *);
 extern void fertilize_tree(Stand *,Real,Real,int,const Config *);
 extern void setotherstocrop(void);
+extern Bool ispftinstand(const Pftlist *,int);
 extern void output_gbw(Output *,const Stand *,Real,Real,Real,Real,
                        const Real [LASTLAYER],const Real [LASTLAYER],Real,Real,int,
                        Bool,const Config *);
+extern void cmplandusemap(const char *,const int *,int,const char *,const int *,int,int,int,const Config *);
+extern const char *getcftname(int,int,int,const Config *);
+extern int *getcftmap(const Map *,const char *,Bool,Bool,int,int,const Config *);
+extern Bool getmap(Map *,const char *,const char *,Bool,Bool,int **,int *,int,int,Config *);
+extern Bool checkbasetemp(const Limit [],int,int,const Config *);
+extern Bool checkhlimit(const int [],int,int,const Config *);
 
 /* Declaration of variables */
 

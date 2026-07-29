@@ -23,8 +23,6 @@
 
 static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration */
                       int *count,
-                      const Standtype standtype[], /* array of stand types */
-                      int nstand,              /* number of stand types */
                       int npft,                /* number of natural PFTs */
                       int ncft                 /* number of crop PFTs */
                      ) /* returns allocated cell grid or NULL */
@@ -34,23 +32,24 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
   int i,n,l,j,data;
   int cft;
   Celldata celldata;
-  Bool swap_restart;
   Bool missing;
   Infile grassharvest_file;
   unsigned int soilcode;
   int soil_id;
+  int miss,miss_total;
+  int skipped,skipped_total;
   char *name;
   size_t offset;
   Bool isregion;
 #ifdef IMAGE
   Infile aquifers;
 #ifdef COUPLED
-  Productinit *productinit;
-  Product *productpool;
+  Productinit *productinit=NULL;
+  Product *productpool=NULL;
 #endif
 #endif
   int code;
-  FILE *file_restart;
+  Bstruct file_restart;
   Infile countrycode;
 
   /* Open coordinate and soil file */
@@ -109,7 +108,7 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     if(config->grassharvest_filename.name!=NULL)
     {
       // SR, grass management options: here choosing the grass harvest regime on the managed grassland
-      if(openinputdata(&grassharvest_file,&config->grassharvest_filename,"grass harvest",NULL,LPJ_BYTE,1.0,config))
+      if(openinputdata(&grassharvest_file,&config->grassharvest_filename,"grass harvest",NULL,LPJ_BYTE,1.0,0,config))
       {
         closecelldata(celldata,config);
         if(config->countrypar!=NULL)
@@ -125,7 +124,7 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
   if(config->aquifer_irrig)
   {
     /* Open file with aquifer locations */
-    if(openinputdata(&aquifers,&config->aquifer_filename,"aquifer",NULL,LPJ_BYTE,1.0,config))
+    if(openinputdata(&aquifers,&config->aquifer_filename,"aquifer",NULL,LPJ_BYTE,1.0,0,config))
     {
       closecelldata(celldata,config);
       if(config->countrypar!=NULL)
@@ -184,12 +183,16 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
   {
     file_restart=NULL;
     config->initsoiltemp=TRUE;
+    config->river_routing_restart=config->river_routing;
   }
   else
   {
-    file_restart=openrestart((config->ischeckpoint) ? config->checkpoint_restart_filename : config->restart_filename,config,npft+ncft,&swap_restart);
+    file_restart=openrestart((config->ischeckpoint) ? config->checkpoint_restart_filename : config->restart_filename,config,npft,ncft);
     if(file_restart==NULL)
     {
+      if(isroot(*config))
+        fprintf(stderr,"ERROR254: Cannot open %s file '%s'.\n",(config->ischeckpoint) ? "checkpoint" : "restart",
+                (config->ischeckpoint) ? config->checkpoint_restart_filename : config->restart_filename);
       free(grid);
       closecelldata(celldata,config);
       if(config->countrypar!=NULL)
@@ -200,6 +203,7 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
         closeinput(&grassharvest_file);
       return NULL;
     }
+    skipped=bstruct_getnoread(file_restart);
     if(!config->ischeckpoint && config->new_seed)
       setseed(config->seed,config->seed_start);
   }
@@ -268,7 +272,7 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     grid[i].ml.grassland_lsuha=param.lsuha;
     grid[i].ml.dam=FALSE;
     grid[i].ml.seasonality_type=NO_SEASONALITY;
-    grid[i].ml.cropfrac_rf=grid[i].ml.cropfrac_ir=grid[i].ml.reservoirfrac=0;
+    grid[i].ml.cropfrac_rf=grid[i].ml.cropfrac_ir=grid[i].ml.cropfrac_wl=grid[i].ml.reservoirfrac=0;
     grid[i].ml.product.fast.carbon=grid[i].ml.product.slow.carbon=grid[i].ml.product.fast.nitrogen=grid[i].ml.product.slow.nitrogen=0;
     grid[i].balance.totw=grid[i].balance.tot.carbon=grid[i].balance.tot.nitrogen=0.0;
     grid[i].balance.estab_storage_tree[0].carbon=grid[i].balance.estab_storage_tree[1].carbon=100.0;
@@ -276,12 +280,29 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     grid[i].balance.estab_storage_grass[0].carbon=grid[i].balance.estab_storage_grass[1].carbon=20.0;
     grid[i].balance.estab_storage_grass[0].nitrogen=grid[i].balance.estab_storage_grass[1].nitrogen=2.0;
     grid[i].balance.surface_storage_last=grid[i].balance.soil_storage_last=0.0;
+#ifdef CHECK_BALANCE
+    grid[i].balance.daily_prec_last=grid[i].balance.daily_evap_last=0.0;
+    grid[i].balance.daily_transp_last=grid[i].balance.daily_interc_last=0.0;
+    grid[i].balance.daily_evap_lake_last=grid[i].balance.daily_evap_res_last=0.0;
+    grid[i].balance.daily_conv_loss_last=grid[i].balance.daily_wateruse_last=0.0;
+    grid[i].balance.daily_excess_last=grid[i].balance.daily_MT_water_last=0.0;
+    grid[i].balance.daily_discharge_last=0.0;
+    grid[i].balance.daily_surface_prev=grid[i].balance.daily_soil_prev=0.0;
+#endif
+    grid[i].balance.ricefrac=0.0;
     grid[i].discharge.waterdeficit=0.0;
-    grid[i].discharge.wateruse=0.0;
 #ifdef IMAGE
-    grid[i].discharge.wateruse_wd=0.0;
+    grid[i].discharge.wateruse_wd=newvec(Real,NMONTH);
+    checkptr(grid[i].discharge.wateruse_wd);
     grid[i].discharge.wateruse_fraction = 0.0;
 #endif
+    if(config->wateruse)
+    {
+       grid[i].discharge.wateruse=newvec(Real,NMONTH);
+       checkptr(grid[i].discharge.wateruse);
+    }
+    else
+      grid[i].discharge.wateruse=NULL;
     grid[i].balance.excess_water=0;
     grid[i].discharge.dmass_lake_max=grid[i].lakefrac*H*grid[i].coord.area*1000;
     grid[i].discharge.dmass_lake=grid[i].discharge.dmass_river=0.0;
@@ -289,21 +310,41 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     grid[i].discharge.gir=grid[i].discharge.irrig_unmet=0.0;
     grid[i].discharge.act_irrig_amount_from_reservoir=0.0;
     grid[i].discharge.withdrawal=grid[i].discharge.wd_demand=0.0;
-#ifdef IMAGE
-    grid[i].discharge.dmass_gw=0.0;
+    grid[i].discharge.dmass_gw=6000*grid[i].coord.area;
     grid[i].discharge.withdrawal_gw=0.0;
-#endif
     grid[i].discharge.wd_neighbour=grid[i].discharge.wd_deficit=0.0;
     grid[i].discharge.mfout=grid[i].discharge.mfin=0.0;
+    grid[i].ground_st = 6000*0.3;
+    grid[i].ground_st_am = 6000*0.7;
     grid[i].discharge.dmass_sum=0.0;
     grid[i].discharge.fin_ext=0.0;
     grid[i].discharge.afin_ext=0.0;
     grid[i].discharge.queue=NULL;
+    grid[i].icefrac = 0;
+    grid[i].wetlandfrac=0;
+    grid[i].hydrotopes.meanwater = 0.;
+    grid[i].hydrotopes.changecount = 0;
+    grid[i].hydrotopes.wetland_area = 0.;
+    grid[i].hydrotopes.wetland_area_runmean = 0.;
+    grid[i].hydrotopes.wetland_cti = 0.;
+    grid[i].hydrotopes.wetland_cti_runmean = 0.;
+    grid[i].hydrotopes.wetland_wtable_current = -40;
+    grid[i].hydrotopes.wetland_wtable_max = -40;
+    grid[i].hydrotopes.wetland_wtable_mean = -40;
+    grid[i].hydrotopes.wtable_mean = -40;
+    grid[i].is_glaciated = FALSE;
+    grid[i].was_glaciated = FALSE;
+    grid[i].lateral_water = 0.0;
+    grid[i].NO3_lateral=0.0;
     grid[i].ignition.nesterov_accum=0;
     grid[i].ignition.nesterov_max=0;
     grid[i].ignition.nesterov_day=0;
     grid[i].landcover=NULL;
     grid[i].output.data=NULL;
+    grid[i].gsi_cum=1;
+    grid[i].ignition.human=0;
+
+    initfwi(&grid[i].fwi_data);
 #ifdef COUPLING_WITH_FMS
     grid[i].laketemp=0;
 #endif
@@ -311,18 +352,10 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     {
       grid[i].ml.landfrac=newlandfrac(ncft,config->nagtree);
       checkptr(grid[i].ml.landfrac);
-      if(config->with_nitrogen)
-      {
-        grid[i].ml.fertilizer_nr=newlandfrac(ncft,config->nagtree);
-        checkptr(grid[i].ml.fertilizer_nr);
-        grid[i].ml.manure_nr=newlandfrac(ncft,config->nagtree);
-        checkptr(grid[i].ml.manure_nr);
-      }
-      else
-      {
-        grid[i].ml.fertilizer_nr = NULL;
-        grid[i].ml.manure_nr = NULL;
-      }
+      grid[i].ml.fertilizer_nr=newlandfrac(ncft,config->nagtree);
+      checkptr(grid[i].ml.fertilizer_nr);
+      grid[i].ml.manure_nr=newlandfrac(ncft,config->nagtree);
+      checkptr(grid[i].ml.manure_nr);
       grid[i].ml.irrig_system=new(Irrig_system);
       checkptr(grid[i].ml.irrig_system);
       grid[i].ml.residue_on_field=newlandfrac(ncft,config->nagtree);
@@ -379,6 +412,8 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
           n=addstand(&natural_stand,grid+i);
           stand=getstand(grid[i].standlist,n-1);
           stand->frac=1-grid[i].lakefrac;
+          stand->Hag_Beta = grid[i].Hag_beta;
+          stand->slope_mean = grid[i].slope;
           if(initsoil(stand,config->soilpar+soil_id,npft+ncft,config))
             return NULL;
           for(l=0;l<FRACGLAYER;l++)
@@ -400,7 +435,7 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
         }
         else
           grid[i].ml.sdate_fixed=NULL;
-        if(config->crop_phu_option==PRESCRIBED_CROP_PHU)
+        if(config->crop_phu_option>=PRESCRIBED_CROP_PHU)
         {
           grid[i].ml.crop_phu_fixed=newvec(Real,2*ncft);
           checkptr(grid[i].ml.crop_phu_fixed);
@@ -414,8 +449,8 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     else /* read cell data from restart file */
     {
       if(freadcell(file_restart,grid+i,npft,ncft,
-                   config->soilpar+soil_id,standtype,nstand,
-                   swap_restart,config))
+                   config->soilpar+soil_id,
+                   config))
       {
         fprintf(stderr,"ERROR190: Cannot read restart data from '%s' for cell %d.\n",
                 (config->ischeckpoint) ? config->checkpoint_restart_filename : config->restart_filename,i+config->startgrid);
@@ -424,8 +459,10 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
       if(!config->ischeckpoint && config->new_seed)
         setseed(grid[i].seed,config->seed_start+(i+config->startgrid)*36363);
       if(!grid[i].skip)
-        check_stand_fracs(grid+i,
-                          grid[i].lakefrac+grid[i].ml.reservoirfrac);
+      {
+        if(check_stand_fracs(grid+i,grid[i].lakefrac+grid[i].ml.reservoirfrac,FALSE))
+          return NULL;
+      }
       else
         (*count)++;
     }
@@ -451,7 +488,27 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
     }
   } /* of for(i=0;...) */
   if(file_restart!=NULL)
-    fclose(file_restart);
+  {
+    miss=bstruct_getmiss(file_restart);
+#ifdef USE_MPI
+    MPI_Reduce(&miss,&miss_total,1,MPI_INT,MPI_SUM,0,config->comm);
+#else
+    miss_total=miss;
+#endif
+    if(isroot(*config) && miss_total)
+      fprintf(stderr,"REMARK002: %d objects not in right order in restart file '%s'.\n",
+              miss_total,(config->ischeckpoint) ? config->checkpoint_restart_filename : config->restart_filename);
+    skipped=bstruct_getnoread(file_restart)-skipped;
+#ifdef USE_MPI
+    MPI_Reduce(&skipped,&skipped_total,1,MPI_INT,MPI_SUM,0,config->comm);
+#else
+    skipped_total=skipped;
+#endif
+    if(isroot(*config) && skipped_total)
+      fprintf(stderr,"REMARK003: %d objects not read in restart file '%s'.\n",
+              skipped_total,(config->ischeckpoint) ? config->checkpoint_restart_filename : config->restart_filename);
+    bstruct_finish(file_restart);
+  }
   closecelldata(celldata,config);
   if(config->grassharvest_filename.name!=NULL)
     closeinput(&grassharvest_file);
@@ -474,8 +531,6 @@ static Cell *newgrid2(Config *config,          /* Pointer to LPJ configuration *
 } /* of 'newgrid2' */
 
 Cell *newgrid(Config *config,          /**< Pointer to LPJ configuration */
-              const Standtype standtype[], /**< array of stand types */
-              int nstand,              /**< number of stand types */
               int npft,                /**< number of natural PFTs */
               int ncft                 /**< number of crop PFTs */
              ) /** \return allocated cell grid or NULL */
@@ -486,7 +541,7 @@ Cell *newgrid(Config *config,          /**< Pointer to LPJ configuration */
   int count,count_total;
   Bool iserr;
   Cell *grid;
-  grid=newgrid2(config,&count,standtype,nstand,npft,ncft);
+  grid=newgrid2(config,&count,npft,ncft);
   iserr=(grid==NULL);
 #ifdef USE_MPI
   counts=newvec(int,config->ntask);
@@ -494,7 +549,12 @@ Cell *newgrid(Config *config,          /**< Pointer to LPJ configuration */
     iserr=TRUE;
 #endif
   if(iserror(iserr,config))
+  {
+#ifdef USE_MPI
+    free(counts);
+#endif
     return NULL;
+  }
 #ifdef USE_MPI
   MPI_Allgather(&config->count,1,MPI_INT,counts,1,MPI_INT,
                 config->comm);
@@ -521,11 +581,24 @@ Cell *newgrid(Config *config,          /**< Pointer to LPJ configuration */
   {
     /* initialize river-routing network */
     if(initdrain(grid,config))
+    {
+      if(isroot(*config))
+        fputs("ERROR207: Cannot initialize river network.\n",stderr);
       return NULL;
+    }
   }
   if(config->reservoir)
   {
     if(initreservoir(grid,config))
+    {
+      if(isroot(*config))
+        fputs("ERROR207: Cannot initialize reservoir data.\n",stderr);
+      return NULL;
+    }
+  }
+  if(config->max_firesize)
+  {
+    if(initmax_firesize(grid,config))
       return NULL;
   }
   if(config->withlanduse!=NO_LANDUSE && config->iscotton)
@@ -533,5 +606,7 @@ Cell *newgrid(Config *config,          /**< Pointer to LPJ configuration */
     if(readcottondays(grid,config))
      return NULL;
   }
+  if(inithydro(grid,config))
+    return NULL;
   return grid;
 } /* of 'newgrid' */

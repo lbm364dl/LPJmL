@@ -28,7 +28,7 @@ long long outputfilesize(const Config *config /**< LPJ configuration */
   iscdf=FALSE;
   for(i=0;i<config->n_out;i++)
   {
-    if(config->outputvars[i].id==GLOBALFLUX)
+    if(config->outputvars[i].id==GLOBALFLUX || config->outputvars[i].id==PCO2 || config->outputvars[i].id==PCH4)
       sum+=(config->lastyear-config->firstyear+config->nspinup+1)*200;
     else
     {
@@ -42,8 +42,8 @@ long long outputfilesize(const Config *config /**< LPJ configuration */
         {
            if(config->soil_filename.fmt==CDF)
            {
-             coord=opencoord_netcdf(config->soil_filename.name,
-                                    config->soil_filename.var,isroot(*config));
+             coord=opencoord_netcdf(config->soil_filename.name,NULL,NULL,
+                                    config->soil_filename.var,&config->netcdf,isroot(*config));
              if(coord!=NULL)
              {
                getextension_netcdf(&ext,coord);

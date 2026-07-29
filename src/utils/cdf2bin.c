@@ -15,12 +15,13 @@
 #include "lpj.h"
 
 #ifdef USE_UDUNITS
-#define USAGE "Usage: %s [-swap] [-v] [-units unit] [-var name] [-map name] [-clm] [-cellsize size] [-byte] [-floatgrid] [-doublegrid]  [-o filename] [-json] gridfile netcdffile ...\n"
+#define USAGE "Usage: %s [-h] [-swap] [-v] [-units unit] [-var name] [-map name] [-clm]\n       [-cellsize s] [-byte] [-floatgrid] [-doublegrid]  [-o binfile]\n       [-json] gridfile netcdffile ...\n"
 #else
-#define USAGE "Usage: %s [-swap] [-v] [-var name] [-map name] [-clm] [-cellsize size] [-byte] [-floatgrid] [-doublegrid] [-o filename] [-json] gridfile netcdffile ...\n"
+#define USAGE "Usage: %s [-h] [-swap] [-v] [-var name] [-map name] [-clm] [-cellsize s] [-byte] [-floatgrid] [-doublegrid] [-o binfile] [-json] gridfile netcdffile ...\n"
 #endif
+#define ERR_USAGE USAGE "\nTry \"%s --help\" for more information.\n"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 
 static Bool readmydata(Climatefile *file,    /* climate data file */
@@ -64,7 +65,7 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
       if(f==NULL)
       {
         printallocerr("data");
-        nc_close(file->ncid);
+        closeclimate_netcdf(file,TRUE);
         return TRUE;
       }
       break;
@@ -73,13 +74,13 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
       if(s==NULL)
       {
         printallocerr("data");
-        nc_close(file->ncid);
+        closeclimate_netcdf(file,TRUE);
         return TRUE;
       }
       break;
     default:
       fprintf(stderr,"Datatype %s not supported.\n",typenames[file->datatype]);
-      nc_close(file->ncid);
+      closeclimate_netcdf(file,TRUE);
       return TRUE;
   }
   switch(file->time_step)
@@ -115,7 +116,7 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
           free(f);
           fprintf(stderr,"ERROR421: Cannot read float data: %s.\n",
                   nc_strerror(rc));
-          nc_close(file->ncid);
+          closeclimate_netcdf(file,TRUE);
           return TRUE;
         }
       }
@@ -126,7 +127,7 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
           free(s);
           fprintf(stderr,"ERROR421: Cannot read short data: %s.\n",
                  nc_strerror(rc));
-          nc_close(file->ncid);
+          closeclimate_netcdf(file,TRUE);
           return TRUE;
         }
       }
@@ -143,18 +144,18 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
             free(f);
           else
             free(s);
-          nc_close(file->ncid);
+          closeclimate_netcdf(file,TRUE);
           return TRUE;
         }
         if(file->datatype==LPJ_FLOAT)
         {
-          if(f[file->nlon*address[0]+address[1]]==file->missing_value.f)
+          if(ismissingvalue(f[file->nlon*address[0]+address[1]],file->missing_value.f))
           {
             fprintf(stderr,"ERROR423: Missing value for cell=%d (",cell);
             fprintcoord(stderr,coords+cell);
             fprintf(stderr,").\n");
             free(f);
-            nc_close(file->ncid);
+            closeclimate_netcdf(file,TRUE);
             return TRUE;
           }
           else if(isnan(f[file->nlon*address[0]+address[1]]))
@@ -163,7 +164,7 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
             fprintcoord(stderr,coords+cell);
             fprintf(stderr,").\n");
             free(f);
-            nc_close(file->ncid);
+            closeclimate_netcdf(file,TRUE);
             return TRUE;
           }
           if(isbyte)
@@ -191,7 +192,7 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
             fprintcoord(stderr,coords+cell);
             fprintf(stderr,").\n");
             free(s);
-            nc_close(file->ncid);
+            closeclimate_netcdf(file,TRUE);
             return TRUE;
           }
           if(isbyte)
@@ -222,18 +223,20 @@ static Bool readmydata(Climatefile *file,    /* climate data file */
 
 int main(int argc,char **argv)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   Coordfile coordfile;
   Filename coord_filename;
+  Filename filename;
   Climatefile data;
   Config config;
-  char *units,*var,*outname,*endptr,*out_json,*arglist,*long_name,*standard_name,*history,*source,*map_name,*title;
+  char *units,*outname,*endptr,*out_json,*arglist,*long_name,*standard_name,*history,*source,*map_name,*title;
+  const char *progname;
   Coord *grid;
   Intcoord intcoord;
   float fcoord[2];
   double dcoord[2];
   FILE *file;
-  Map *map;
+  Map *map=NULL;
   int iarg,j,k;
   Attr *attrs=NULL;
   int n_attr=0,len;
@@ -244,20 +247,53 @@ int main(int argc,char **argv)
   Filename grid_name;
   Type grid_type;
   isbyte=swap=verbose=isclm=isjson=FALSE;
+  filename.var=NULL;
+  filename.map=NULL;
+  filename.time=NULL;
+  filename.unit=NULL;
   units=NULL;
-  var=NULL;
   map_name=NULL;
+  map=0;
   outname="out.bin"; /* default file name for output */
   grid_type=LPJ_SHORT;
   cellsize_lon=cellsize_lat=0.5;      /* default cell size */
   initconfig(&config);
+  initsetting_netcdf(&config.netcdf);
+  progname=strippath(argv[0]);
   for(iarg=1;iarg<argc;iarg++)
   {
     if(argv[iarg][0]=='-')
     {
-      if(!strcmp(argv[iarg],"-swap"))
+      if(!strcmp(argv[iarg],"-h") || !strcmp(argv[iarg],"--help"))
+      {
+        printf("   cdf2bin (" __DATE__ ") Help\n"
+               "   ==========================\n\n"
+               "Convert NetCDF data into raw binary output data for LPJmL version %s\n",getversion());
+        printf(USAGE
+               "\nArguments:\n"
+               "-h,--help    print this help text\n"
+               "-v,--verbose print name of NetCDF files\n"
+#ifdef USE_UDUNITS
+               "-units u     set unit to convert from NetCDF file\n"
+#endif
+               "-var name    variable name in NetCDF file\n"
+               "-map name    name of map in NetCDF file\n"
+               "-clm         grid file is in CLM format, default is raw\n"
+               "-byte        output data is converted in byte\n"
+               "-floatgrid   set datatype of grid file to float, default is short\n"
+               "-doublegrid  set datatype of grid file to double, default is short\n"
+               "-cellsize s  cell size in grid file, default is 0.5\n"
+               "-json        JSON metafile is created with suffix '.json'\n"
+               "-o binfile   filename of raw data file written. Default is out.bin\n"
+               "gridfile     filename of grid data file\n"
+               "netcdffile   filename of NetCDF file(s) converted\n\n"
+               "(C) Potsdam Institute for Climate Impact Research (PIK), see COPYRIGHT file\n",
+               progname);
+        return EXIT_SUCCESS;
+      }
+      else if(!strcmp(argv[iarg],"-swap"))
         swap=TRUE;
-      else if(!strcmp(argv[iarg],"-v"))
+      else if(!strcmp(argv[iarg],"-v") || !strcmp(argv[iarg],"--verbose"))
         verbose=TRUE;
       else if(!strcmp(argv[iarg],"-clm"))
         isclm=TRUE;
@@ -274,10 +310,11 @@ int main(int argc,char **argv)
         if(argc==iarg+1)
         {
           fprintf(stderr,"Missing argument after option '-var'.\n"
-                 USAGE,argv[0]);
+                  ERR_USAGE,progname,progname);
           return EXIT_FAILURE;
         }
-        var=argv[++iarg];
+        filename.var=strdup(argv[++iarg]);
+        check(filename.var);
       }
 #ifdef USE_UDUNITS
       else if(!strcmp(argv[iarg],"-units"))
@@ -285,10 +322,11 @@ int main(int argc,char **argv)
         if(argc==iarg+1)
         {
           fprintf(stderr,"Missing argument after option '-units'.\n"
-                 USAGE,argv[0]);
+                  ERR_USAGE,progname,progname);
           return EXIT_FAILURE;
         }
-        units=argv[++iarg];
+        units=strdup(argv[++iarg]);
+        check(units);
       }
 #endif
       else if(!strcmp(argv[iarg],"-map"))
@@ -296,7 +334,7 @@ int main(int argc,char **argv)
         if(argc==iarg+1)
         {
           fprintf(stderr,"Missing argument after option '-map'.\n"
-                 USAGE,argv[0]);
+                  ERR_USAGE,progname,progname);
           return EXIT_FAILURE;
         }
         map_name=argv[++iarg];
@@ -306,7 +344,7 @@ int main(int argc,char **argv)
         if(argc==iarg+1)
         {
           fprintf(stderr,"Missing argument after option '-o'.\n"
-                 USAGE,argv[0]);
+                  ERR_USAGE,progname,progname);
           return EXIT_FAILURE;
         }
         outname=argv[++iarg];
@@ -316,7 +354,7 @@ int main(int argc,char **argv)
         if(argc==iarg+1)
         {
           fprintf(stderr,"Missing argument after option '-cellsize'.\n"
-                  USAGE,argv[0]);
+                  ERR_USAGE,progname,progname);
           return EXIT_FAILURE;
         }
         cellsize_lon=(float)strtod(argv[++iarg],&endptr);
@@ -335,17 +373,23 @@ int main(int argc,char **argv)
       else
       {
         fprintf(stderr,"Invalid option '%s'.\n"
-                USAGE,argv[iarg],argv[0]);
+                ERR_USAGE,argv[iarg],progname,progname);
         return EXIT_FAILURE;
       }
     }
     else
       break;
   }
+  if(argc<=iarg)
+  {
+    fprintf(stderr,"Grid and NetCDF file missing.\n"
+            ERR_USAGE,progname,progname);
+    return EXIT_FAILURE;
+  }
   if(argc<iarg+2)
   {
-    fprintf(stderr,"Missing arguments.\n"
-            USAGE,argv[0]);
+    fprintf(stderr,"NetCDF file missing.\n"
+            ERR_USAGE,progname,progname);
     return EXIT_FAILURE;
   }
   if(isclm)
@@ -403,7 +447,7 @@ int main(int argc,char **argv)
          config.ngridcell=getfilesizep(file)/sizeof(double)/2;
          break;
        default:
-         fprintf(stderr,"Invalid datatype %d in '%s'.\n",grid_type,argv[iarg]);
+         fprintf(stderr,"Invalid datatype %d in '%s'.\n",(int)grid_type,argv[iarg]);
          return TRUE;
     }
     if(config.ngridcell==0)
@@ -455,24 +499,24 @@ int main(int argc,char **argv)
   header.cellsize_lat=(float)config.resolution.lat;
   header.cellsize_lon=(float)config.resolution.lon;
   header.ncell=config.ngridcell;
-  config.missing_value=MISSING_VALUE_FLOAT;
   file=fopen(outname,"wb");
   if(file==NULL)
   {
     fprintf(stderr,"Error creating '%s': %s.\n",outname,strerror(errno));
     return EXIT_FAILURE;
   }
+  data.oneyear=FALSE;
   for(j=iarg+1;j<argc;j++)
   {
     if(verbose)
       printf("%s\n",argv[j]);
-    if(openclimate_netcdf(&data,argv[j],NULL,var,NULL,units,&config))
+    if(openclimate_netcdf(&data,NULL,NULL,NULL,argv[j],&filename,units,&config))
     {
       fprintf(stderr,"Error opening '%s'.\n",argv[j]);
       return EXIT_FAILURE;
     }
-    if(var==NULL)
-      var=getvarname_netcdf(&data);
+    if(filename.var==NULL)
+      filename.var=getvarname_netcdf(&data);
     if(units==NULL)
       units=getattr_netcdf(data.ncid,data.varid,"units");
     long_name=getattr_netcdf(data.ncid,data.varid,"long_name");
@@ -495,9 +539,13 @@ int main(int argc,char **argv)
           else
             map_name=BAND_NAMES;
         }
-        else if((map=readmap_netcdf(data.ncid,PFT_NAME))!=NULL)
+        else if((map=readmap_netcdf(data.ncid,config.netcdf.pft_name.name))!=NULL)
           map_name=BAND_NAMES;
-        else if((map=readmap_netcdf(data.ncid,DEPTH_NAME))!=NULL)
+        else if((map=readmap_netcdf(data.ncid,config.netcdf.depth.name))!=NULL)
+          map_name=BAND_NAMES;
+        else if((map=readmap_netcdf(data.ncid,config.netcdf.fuel.name))!=NULL)
+          map_name=BAND_NAMES;
+        else if((map=readmap_netcdf(data.ncid,config.netcdf.stand_name.name))!=NULL)
           map_name=BAND_NAMES;
         if(nc_inq_natts(data.ncid,&len))
           n_attr=0;
@@ -576,7 +624,7 @@ int main(int argc,char **argv)
       fprintf(stderr,"Error reading '%s'.\n",argv[j]);
       return EXIT_FAILURE;
     }
-    nc_close(data.ncid);
+    closeclimate_netcdf(&data,TRUE);
   }
   if(isclm)
   {
@@ -602,10 +650,19 @@ int main(int argc,char **argv)
     }
     grid_name.name=argv[iarg];
     grid_name.fmt=(isclm) ? CLM : RAW;
-    fprintjson(file,outname,title,source,history,arglist,&header,map,map_name,attrs,n_attr,var,units,standard_name,long_name,&grid_name,grid_type,(isclm) ? CLM : RAW,LPJOUTPUT_HEADER,FALSE,LPJOUTPUT_VERSION);
+    fprintjson(file,outname,title,source,history,arglist,&header,map,map_name,attrs,n_attr,filename.var,units,standard_name,long_name,&grid_name,grid_type,(isclm) ? CLM : RAW,LPJOUTPUT_HEADER,FALSE,LPJOUTPUT_VERSION);
+    free(out_json);
+    free(arglist);
     fclose(file);
   }
+  free(filename.var);
+  free(units);
+  free(long_name);
+  free(standard_name);
+  free(history);
+  free(source);
   freemap(map);
+  free(grid);
   return EXIT_SUCCESS;
 #else
   fprintf(stderr,"ERROR401: NetCDF is not supported in this version of %s.\n",argv[0]);

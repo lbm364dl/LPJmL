@@ -24,16 +24,18 @@
 #include "biomass_tree.h"
 #include "biomass_grass.h"
 #include "woodplantation.h"
+#include "wetland.h"
+#include "urban.h"
 
 #define NTYPES 3
-#define NSTANDTYPES 13 /* number of stand types */
+#define NSTANDTYPES 16 /* number of stand types */
 
-#define USAGE "Usage: %s [-h] [-v]  [-nopp] [-pp cmd] [-inpath dir] [-restartpath dir]\n"\
-              "       [[-Dmacro[=value]] [-Idir] ...] filename [-check] [start [end]]\n"
-
+#define USAGE "\nUsage: %s [-h] [-v]  [-nopp] [-pp cmd] [-inpath dir] [-restartpath dir]\n"\
+              "       [-pedantic] [-print_noread] [[-Dmacro[=value]] [-Idir] ...] filename [-check] [start [end]]\n"
+#define LPJ_USAGE USAGE "\nTry \"%s --help\" for more information.\n"
 
 static Bool printgrid(Config *config, /* Pointer to LPJ configuration */
-                      Standtype standtype[],
+                      Standtype **standtype,
                       int npft,       /* number of natural PFTs */
                       int ncft,       /* number of crop PFTs */
                       Bool isout      /* print output (TRUE/FALSE) */
@@ -41,11 +43,11 @@ static Bool printgrid(Config *config, /* Pointer to LPJ configuration */
 {
   Cell grid;
   int i,soil_id,data;
-  Bool swap,missing,isregion;
+  Bool missing,isregion;
   unsigned int soilcode;
   int code;
   size_t offset;
-  FILE *file_restart;
+  Bstruct file_restart;
   char *name;
   Celldata celldata;
   Infile countrycode;
@@ -96,7 +98,7 @@ static Bool printgrid(Config *config, /* Pointer to LPJ configuration */
   }
   /* If FROM_RESTART open restart file */
   config->count=0;
-  file_restart=openrestart((config->ischeckpoint) ? config->checkpoint_restart_filename : config->write_restart_filename,config,npft+ncft,&swap);
+  file_restart=openrestart((config->ischeckpoint) ? config->checkpoint_restart_filename : config->write_restart_filename,config,npft,ncft);
   if(file_restart==NULL)
     return TRUE;
 
@@ -148,16 +150,20 @@ static Bool printgrid(Config *config, /* Pointer to LPJ configuration */
     grid.ml.product.fast.carbon=grid.ml.product.slow.carbon=grid.ml.product.fast.nitrogen=grid.ml.product.slow.nitrogen=0;
     grid.discharge.dmass_lake=0.0;
     grid.discharge.next=0;
+    grid.discharge.wateruse=NULL;
+#if defined IMAGE && defined COUPLED
+    grid.discharge.wateruse_wd=NULL;
+    grid.ml.image_data=NULL;
+    grid.pft_harvest=NULL;
+#endif
     grid.ml.fraction=NULL;
     grid.ml.resdata=NULL;
+    grid.discharge.tfunct=NULL;
     grid.ml.dam=FALSE;
     if(config->withlanduse!=NO_LANDUSE)
     {
       grid.ml.landfrac=newlandfrac(ncft,config->nagtree);
-      if(config->with_nitrogen)
-        grid.ml.fertilizer_nr=newlandfrac(ncft,config->nagtree);
-      else
-        grid.ml.fertilizer_nr=NULL;
+      grid.ml.fertilizer_nr=newlandfrac(ncft,config->nagtree);
 
     }
     else
@@ -165,26 +171,27 @@ static Bool printgrid(Config *config, /* Pointer to LPJ configuration */
       grid.ml.landfrac=NULL;
       grid.ml.fertilizer_nr=NULL;
     }
+    grid.ml.manure_nr=NULL;
+    grid.ml.residue_on_field=NULL;
+    grid. ml.irrig_system=NULL;
     grid.output.data=NULL;
     grid.output.syear2=NULL;
     grid.output.syear=NULL;
     /*grid.cropdates=init_cropdates(&config.pftpar+npft,ncft,grid.coord.lat); */
     soil_id=config->soilmap[soilcode]-1;
     if(freadcell(file_restart,&grid,npft,ncft,
-                 config->soilpar+soil_id,standtype,NSTANDTYPES,swap,config))
+                 config->soilpar+soil_id,config))
     {
-      fprintf(stderr,"WARNING008: Unexpected end of file in '%s', number of gridcells truncated to %d.\n",
+      fprintf(stderr,"ERRROR190: Cannot read cell data from '%s', number of gridcells truncated to %d.\n",
               (config->ischeckpoint) ? config->checkpoint_restart_filename : config->write_restart_filename,i);
       config->ngridcell=i;
       break;
     }
     if(isout)
       printcell(&grid,1,npft,ncft,config);
-    freelandfrac(grid.ml.landfrac);
-    freelandfrac(grid.ml.fertilizer_nr);
     freecell(&grid,npft,config);
   } /* of for(i=0;...) */
-  fclose(file_restart);
+  bstruct_finish(file_restart);
   closecelldata(celldata,config);
   if(config->countrypar!=NULL)
   {
@@ -200,7 +207,7 @@ int main(int argc,char **argv)
   char *endptr;
   const char *progname;
   const char *title[4];
-  String line;
+  String line,line2;
   Pfttype scanfcn[NTYPES]=
   {
     {name_grass,fscanpft_grass},
@@ -208,7 +215,24 @@ int main(int argc,char **argv)
     {name_crop,fscanpft_crop}
   };
 
-  Standtype standtype[NSTANDTYPES];
+  Standtype *standtype[NSTANDTYPES];
+
+  standtype[NATURAL]=&natural_stand;
+  standtype[WETLAND]=&wetland_stand;
+  standtype[SETASIDE_RF]=&setaside_rf_stand;
+  standtype[SETASIDE_IR]=&setaside_ir_stand;
+  standtype[SETASIDE_WETLAND]=&setaside_wetland_stand;
+  standtype[AGRICULTURE]=&agriculture_stand;
+  standtype[MANAGEDFOREST]=&managedforest_stand;
+  standtype[GRASSLAND]=&grassland_stand;
+  standtype[OTHERS]=&others_stand;
+  standtype[BIOMASS_TREE]=&biomass_tree_stand;
+  standtype[BIOMASS_GRASS]=&biomass_grass_stand;
+  standtype[AGRICULTURE_TREE]=&agriculture_tree_stand;
+  standtype[AGRICULTURE_GRASS]=&agriculture_grass_stand;
+  standtype[WOODPLANTATION]=&woodplantation_stand,
+  standtype[URBAN]=&urban_stand,
+  standtype[KILL]=&kill_stand;
 
   progname=strippath(argv[0]);
   if(argc>1)
@@ -220,12 +244,14 @@ int main(int argc,char **argv)
                 progname);
       fputs("\n     ",stdout);
       repeatch('=',rc);
-      fputs("\n\nPrint content of restart files for LPJmL " LPJ_VERSION "\n\n",stdout);
+      printf("\n\nPrint content of restart files for LPJmL %s\n",getversion());
       printf(USAGE,progname);
       printf("\nArguments:\n"
              "-h,--help        print this help text\n"
              "-v,--version     print LPJmL version\n"
              "-nopp            disable preprocessing\n"
+             "-pedantic        stop on warnings\n"
+             "-print_noread    print variable names not read from restart file\n"
              "-pp cmd          set preprocessor program. Default is '" cpp_cmd "'\n"
              "-inpath dir      directory appended to input filenames\n"
              "-restartpath dir directory appended to restart filename\n"
@@ -240,20 +266,21 @@ int main(int argc,char **argv)
     }
     else if(!strcmp(argv[1],"-v") || !strcmp(argv[1],"--version"))
     {
-      puts(LPJ_VERSION);
+      puts(getversion());
       return EXIT_SUCCESS;
     }
   }
   snprintf(line,78-10,
            "%s (" __DATE__ ")",progname);
+  snprintf(line2,78-10,"Printing restart file for LPJmL Version %s",getversion());
   title[0]=line;
-  title[1]="Printing restart file for LPJmL Version " LPJ_VERSION;
+  title[1]=line2;
   title[2]="(C) Potsdam Institute for Climate Impact Research (PIK),";
   title[3]="see COPYRIGHT file";
   banner(title,4,78);
   initconfig(&config);
-  if(readconfig(&config,scanfcn,NTYPES,NOUT,&argc,&argv,USAGE))
-    fail(READ_CONFIG_ERR,FALSE,"Cannot process configuration file");
+  if(readconfig(&config,scanfcn,NTYPES,standtype,NSTANDTYPES,NOUT,&argc,&argv,LPJ_USAGE))
+    fail(READ_CONFIG_ERR,TRUE,FALSE,"Cannot process configuration file");
   printf("Simulation: %s\n",config.sim_name);
   config.ischeckpoint=ischeckpointrestart(&config) && getfilesize(config.checkpoint_restart_filename)!=-1;
   if(!config.ischeckpoint && config.write_restart_filename==NULL)
@@ -305,19 +332,7 @@ int main(int argc,char **argv)
   if(startgrid>=config.startgrid)
     config.startgrid=startgrid;
   /*config.restart_filename=config.write_restart_filename; */
-  standtype[NATURAL]=natural_stand;
-  standtype[SETASIDE_RF]=setaside_rf_stand;
-  standtype[SETASIDE_IR]=setaside_ir_stand;
-  standtype[AGRICULTURE]=agriculture_stand;
-  standtype[MANAGEDFOREST]=managedforest_stand;
-  standtype[GRASSLAND]=grassland_stand;
-  standtype[OTHERS]=others_stand;
-  standtype[BIOMASS_TREE]=biomass_tree_stand;
-  standtype[BIOMASS_GRASS]=biomass_grass_stand;
-  standtype[AGRICULTURE_TREE]=agriculture_tree_stand;
-  standtype[AGRICULTURE_GRASS]=agriculture_grass_stand;
-  standtype[WOODPLANTATION]=woodplantation_stand,
-  standtype[KILL]=kill_stand;
   rc=printgrid(&config,standtype,config.npft[TREE]+config.npft[GRASS],config.npft[CROP],isout);
+  freeconfig(&config);
   return (rc) ? EXIT_FAILURE : EXIT_SUCCESS;
 } /* of 'main' */

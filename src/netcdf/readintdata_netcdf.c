@@ -4,7 +4,7 @@
 /**                                                                                \n**/
 /**     C implementation of LPJmL                                                  \n**/
 /**                                                                                \n**/
-/**     Function reads data in NetCDF format                                       \n**/
+/**     Function reads integer data in NetCDF format                               \n**/
 /**                                                                                \n**/
 /** (C) Potsdam Institute for Climate Impact Research (PIK), see COPYRIGHT file    \n**/
 /** authors, and contributors see AUTHORS file                                     \n**/
@@ -16,7 +16,7 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 #endif
 
@@ -27,19 +27,28 @@ Bool readintdata_netcdf(const Climatefile *file, /**< climate data file */
                         const Config *config     /**< LPJmL configuration */
                        )                         /** \return TRUE on error */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
-  int cell,rc;
+#ifdef USE_NETCDF
+  int cell,rc,start;
+  size_t i;
   int *f;
   short *s;
+  float *r;
+  double *d;
   size_t offsets[4];
   size_t counts[4];
   String line;
-  offsets[0]=year-file->firstyear;
+  offsets[0]=year;
   offsets[1]=offsets[2]=offsets[3]=0;
   counts[0]=1;
-  counts[1]=file->nlat;
-  counts[2]=file->nlon;
-  counts[3]=file->var_len;
+  if(file->var_len>1)
+  {
+    counts[1]=file->var_len;
+    start=2;
+  }
+  else
+    start=1;
+  counts[start]=file->nlat;
+  counts[start+1]=file->nlon;
   switch(file->datatype)
   {
     case LPJ_INT:
@@ -68,27 +77,29 @@ Bool readintdata_netcdf(const Climatefile *file, /**< climate data file */
       for(cell=0;cell<config->ngridcell;cell++)
       {
         if(file->offset)
-          offsets[1]=file->offset-(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+          offsets[start]=file->offset-(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
         else
-          offsets[1]=(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+          offsets[start]=(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
         if(file->is360 && grid[cell].coord.lon<0)
-          offsets[2]=(int)((360+grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+          offsets[start+1]=(int)((360+grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
         else
-          offsets[2]=(int)((grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
-        if(checkcoord(offsets+1,cell+config->startgrid,&grid[cell].coord,file))
+          offsets[start+1]=(int)((grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+        if(checkcoord(offsets+start,cell+config->startgrid,&grid[cell].coord,file))
         {
           free(f);
           return TRUE;
         }
-
-        if(!grid[cell].skip && f[file->nlon*offsets[1]+offsets[2]]==file->missing_value.i)
+        for(i=0;i<file->var_len;i++)
         {
-          fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
-                  cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
-          free(f);
-          return TRUE;
+          if(!grid[cell].skip && f[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]]==file->missing_value.i)
+          {
+            fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
+                    cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
+            free(f);
+            return TRUE;
+          }
+          data[cell*file->var_len+i]=f[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]];
         }
-        data[cell]=f[file->nlon*offsets[1]+offsets[2]];
       }
       free(f);
       break;
@@ -118,29 +129,136 @@ Bool readintdata_netcdf(const Climatefile *file, /**< climate data file */
       for(cell=0;cell<config->ngridcell;cell++)
       {
         if(file->offset)
-          offsets[1]=file->offset-(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+          offsets[start]=file->offset-(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
         else
-          offsets[1]=(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+          offsets[start]=(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
         if(file->is360 && grid[cell].coord.lon<0)
-          offsets[2]=(int)((360+grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+          offsets[start+1]=(int)((360+grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
         else
-          offsets[2]=(int)((grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
-        if(checkcoord(offsets+1,cell+config->startgrid,&grid[cell].coord,file))
+          offsets[start+1]=(int)((grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+        if(checkcoord(offsets+start,cell+config->startgrid,&grid[cell].coord,file))
         {
           free(s);
           return TRUE;
         }
 
-        if(!grid[cell].skip && s[file->nlon*offsets[1]+offsets[2]]==file->missing_value.s)
+        for(i=0;i<file->var_len;i++)
         {
-          fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
-                  cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
-          free(s);
-          return TRUE;
+          if(!grid[cell].skip && s[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]]==file->missing_value.s)
+          {
+            fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
+                    cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
+            free(s);
+            return TRUE;
+          }
+          data[cell*file->var_len+i]=s[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]];
         }
-        data[cell]=s[file->nlon*offsets[1]+offsets[2]];
       }
       free(s);
+      break;
+    case LPJ_FLOAT:
+      r=newvec(float,file->nlon*file->nlat*file->var_len);
+      if(r==NULL)
+      {
+        printallocerr("data");
+        rc=TRUE;
+      }
+      else if(isroot(*config))
+      {
+        if((rc=nc_get_vara_float(file->ncid,file->varid,offsets,counts,r)))
+          fprintf(stderr,"ERROR421: Cannot read int data: %s.\n",
+                  nc_strerror(rc)); 
+      }
+      else
+        rc=FALSE;
+      if(iserror(rc,config))
+      {
+        free(r);
+        return TRUE;
+      }
+#ifdef USE_MPI
+      MPI_Bcast(r,file->nlon*file->nlat*file->var_len,MPI_FLOAT,0,config->comm);
+#endif
+      for(cell=0;cell<config->ngridcell;cell++)
+      {
+        if(file->offset)
+          offsets[start]=file->offset-(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+        else
+          offsets[start]=(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+        if(file->is360 && grid[cell].coord.lon<0)
+          offsets[start+1]=(int)((360+grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+        else
+          offsets[start+1]=(int)((grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+        if(checkcoord(offsets+start,cell+config->startgrid,&grid[cell].coord,file))
+        {
+          free(r);
+          return TRUE;
+        }
+        for(i=0;i<file->var_len;i++)
+        {
+          if(!grid[cell].skip && r[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]]==file->missing_value.f)
+          {
+            fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
+                    cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
+            free(r);
+            return TRUE;
+          }
+          data[cell*file->var_len+i]=r[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]];
+        }
+      }
+      free(r);
+      break;
+    case LPJ_DOUBLE:
+      d=newvec(double,file->nlon*file->nlat*file->var_len);
+      if(d==NULL)
+      {
+        printallocerr("data");
+        rc=TRUE;
+      }
+      else if(isroot(*config))
+      {
+        if((rc=nc_get_vara_double(file->ncid,file->varid,offsets,counts,d)))
+          fprintf(stderr,"ERROR421: Cannot read int data: %s.\n",
+                  nc_strerror(rc)); 
+      }
+      else
+        rc=FALSE;
+      if(iserror(rc,config))
+      {
+        free(d);
+        return TRUE;
+      }
+#ifdef USE_MPI
+      MPI_Bcast(d,file->nlon*file->nlat*file->var_len,MPI_DOUBLE,0,config->comm);
+#endif
+      for(cell=0;cell<config->ngridcell;cell++)
+      {
+        if(file->offset)
+          offsets[start]=file->offset-(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+        else
+          offsets[start]=(int)((grid[cell].coord.lat-file->lat_min)/file->lat_res+0.5);
+        if(file->is360 && grid[cell].coord.lon<0)
+          offsets[start+1]=(int)((360+grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+        else
+          offsets[start+1]=(int)((grid[cell].coord.lon-file->lon_min)/file->lon_res+0.5);
+        if(checkcoord(offsets+start,cell+config->startgrid,&grid[cell].coord,file))
+        {
+          free(d);
+          return TRUE;
+        }
+        for(i=0;i<file->var_len;i++)
+        {
+          if(!grid[cell].skip && d[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]]==file->missing_value.d)
+          {
+            fprintf(stderr,"ERROR423: Missing value for cell=%d (%s).\n",
+                    cell+config->startgrid,sprintcoord(line,&grid[cell].coord));
+            free(d);
+            return TRUE;
+          }
+          data[cell*file->var_len+i]=d[file->nlon*file->nlat*i+file->nlon*offsets[start]+offsets[start+1]];
+        }
+      }
+      free(d);
       break;
     default:
       if(isroot(*config))

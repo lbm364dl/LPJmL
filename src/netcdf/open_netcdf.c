@@ -16,7 +16,7 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 
 typedef struct
@@ -31,7 +31,7 @@ static List *list=NULL;
 
 int open_netcdf(const char *filename,int *ncid,Bool *isopen)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int i,rc;
   Item *item;
   if(list==NULL)
@@ -77,12 +77,13 @@ int open_netcdf(const char *filename,int *ncid,Bool *isopen)
 
 void free_netcdf(int ncid)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int i;
   Item *item;
   if(list==NULL)
     nc_close(ncid);
   else
+  {
     for(i=0;i<getlistlen(list);i++)
     {
       item=(Item *)getlistitem(list,i);
@@ -97,7 +98,13 @@ void free_netcdf(int ncid)
           dellistitem(list,i);
         }
         break;
-     }
-   }
+      }
+    }
+    if(isempty(list))
+    {
+      freelist(list);
+      list=NULL;
+    }
+  }
 #endif
 } /* of 'free_netcdf' */

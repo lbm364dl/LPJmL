@@ -25,8 +25,10 @@ OBJS    = create_netcdf.$O close_netcdf.$O write_float_netcdf.$O\
           opendata_netcdf.$O readdata_netcdf.$O input_netcdf.$O\
           getvar_netcdf.$O readintdata_netcdf.$O readshortdata_netcdf.$O\
           write_int_netcdf.$O mpi_openclimate_netcdf.$O open_netcdf.$O\
-          openfile_netcdf.$O flush_netcdf.$O readmap_netcdf.$O\
-          checkcoord.$O getattr_netcdf.$O getvarname_netcdf.$O
+          openfile_netcdf.$O flush_netcdf.$O initsetting_netcdf.$O\
+          checkcoord.$O getattr_netcdf.$O getvarname_netcdf.$O\
+          parse_config_netcdf.$O readmap_netcdf.$O setlatlon.$O settimeaxis.$O\
+          getlimitarray_netcdf.$O getglobalattrs_netcdf.$O getintarray_netcdf.$O
 
 INC     = ../../include
 LIBDIR  = ../../lib
@@ -39,7 +41,8 @@ HDRS    = $(INC)/buffer.h $(INC)/coord.h $(INC)/lpj.h $(INC)/outfile.h\
           $(INC)/conf.h $(INC)/swap.h $(INC)/soilpar.h $(INC)/reservoir.h\
           $(INC)/list.h $(INC)/cell.h $(INC)/units.h $(INC)/climbuf.h\
           $(INC)/config.h $(INC)/queue.h $(INC)/output.h $(INC)/spitfire.h\
-          $(INC)/cdf.h $(INC)/soil.h $(INC)/landuse.h $(INC)/discharge.h
+          $(INC)/cdf.h $(INC)/soil.h $(INC)/landuse.h $(INC)/discharge.h\
+          $(INC)/hydrotope.h
 
 
 $(LIBDIR)/$(LIB): $(OBJS)

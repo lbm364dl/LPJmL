@@ -16,20 +16,19 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 
 static Bool myopen_netcdf(Climatefile *file,int year,const Config *config)
 {
   int rc,ndims;
   char *s;
-  s=malloc(strlen(file->filename)+12);
+  s=getsprintf(file->filename,year+file->firstyear);
   if(s==NULL)
   {
     printallocerr("filename");
     return TRUE;
   }    
-  sprintf(s,file->filename,year+file->firstyear);
   rc=nc_open(s,NC_NOWRITE,&file->ncid);
   if(rc)
   {
@@ -103,7 +102,7 @@ Bool readclimate_netcdf(Climatefile *file,   /**< climate data file */
                         const Config *config /**< LPJ configuration */
                        )                     /** \return TRUE on error */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int i,cell,rc;
   float *f;
   double *d;
@@ -112,7 +111,21 @@ Bool readclimate_netcdf(Climatefile *file,   /**< climate data file */
   size_t offsets[3];
   size_t counts[3];
   String line;
-  size=isdaily(*file) ? NDAYYEAR : NMONTH;
+  switch(file->time_step)
+  {
+    case YEAR:
+      size=1;
+      break;
+    case MONTH:
+      size=NMONTH;
+      break;
+    case DAY:
+      size=NDAYYEAR;
+      break;
+    default:
+      size=1;
+      break;
+  }
   if(file->oneyear)
   {
     if(openfile(file,year,config))
@@ -178,7 +191,7 @@ Bool readclimate_netcdf(Climatefile *file,   /**< climate data file */
           }
           for(i=0;i<size;i++)
           {
-            if(f[file->nlon*(i*file->nlat+offsets[1])+offsets[2]]==file->missing_value.f)
+            if(ismissingvalue(f[file->nlon*(i*file->nlat+offsets[1])+offsets[2]],file->missing_value.f))
             {
               fprintf(stderr,"ERROR423: Missing value for cell=%d (%s) at %s %d.\n",
                       cell+config->startgrid,sprintcoord(line,&grid[cell].coord),isdaily(*file) ? "day" : "month",i+1);
@@ -249,7 +262,7 @@ Bool readclimate_netcdf(Climatefile *file,   /**< climate data file */
           }
           for(i=0;i<size;i++)
           {
-            if(d[file->nlon*(i*file->nlat+offsets[1])+offsets[2]]==file->missing_value.d)
+            if(ismissingvalue(d[file->nlon*(i*file->nlat+offsets[1])+offsets[2]],file->missing_value.d))
             {
               fprintf(stderr,"ERROR423: Missing value for cell=%d (%s) at %s %d.\n",
                       cell+config->startgrid,sprintcoord(line,&grid[cell].coord),isdaily(*file) ? "day" : "month",i+1);
@@ -357,7 +370,7 @@ Bool readintclimate_netcdf(Climatefile *file,   /* climate data file */
                            const Config *config /* LPJ configuration */
                           )                     /* returns TRUE on error */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int i,cell,rc;
   int *f;
   short *s;
@@ -529,7 +542,7 @@ int checkvalidclimate_netcdf(Climatefile *file,   /* climate data file */
                              const Config *config /* LPJ configuration */
                             )  /* returns number of invalid cells or -1 */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int i,cell,rc;
   float *f;
   short *s;
@@ -602,7 +615,7 @@ int checkvalidclimate_netcdf(Climatefile *file,   /* climate data file */
           }
           for(i=0;i<size;i++)
           {
-            if(f[file->nlon*(i*file->nlat+offsets[1])+offsets[2]]==file->missing_value.f)
+            if(ismissingvalue(f[file->nlon*(i*file->nlat+offsets[1])+offsets[2]],file->missing_value.f))
             {
               count++;
               grid[cell].skip=TRUE;
@@ -657,7 +670,7 @@ int checkvalidclimate_netcdf(Climatefile *file,   /* climate data file */
           }
           for(i=0;i<size;i++)
           {
-            if(d[file->nlon*(i*file->nlat+offsets[1])+offsets[2]]==file->missing_value.d)
+            if(ismissingvalue(d[file->nlon*(i*file->nlat+offsets[1])+offsets[2]],file->missing_value.d))
             {
               count++;
               grid[cell].skip=TRUE;

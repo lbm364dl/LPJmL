@@ -26,6 +26,8 @@ void fprintpar_tree(FILE *file,       /**< pointer to text file */
   const Pfttreepar *partree;
   partree=par->data;
   fprintf(file,"leaftype:\t%s\n"
+               "phen_to_one:\t%s\n"
+               "rainyseason:\t%s\n"
                "turnover:\t%g %g %g (yr)\n"
                "C:N ratio:\t%g %g %g\n"
                "max crownarea:\t%g (m2)\n"
@@ -34,6 +36,8 @@ void fprintpar_tree(FILE *file,       /**< pointer to text file */
                "wood_density:\t%g (gC/m3)\n"
                "allometry:\t%g %g %g %g\n",
           leaftype[partree->leaftype],
+          bool2str(partree->phen_to_one),
+          bool2str(partree->rainyseason),
           1/partree->turnover.leaf,1/partree->turnover.sapwood,1/partree->turnover.root,
           1/partree->nc_ratio.leaf,1/partree->nc_ratio.sapwood,1/partree->nc_ratio.root,
           partree->crownarea_max,
@@ -41,9 +45,8 @@ void fprintpar_tree(FILE *file,       /**< pointer to text file */
           partree->sapl.heartwood.carbon,partree->sapl.root.carbon,partree->k_latosa,
           partree->wood_density,partree->allom1,partree->allom2,partree->allom3,
           partree->allom4);
-  if(config->with_nitrogen)
-    fprintf(file,"rel. C:N ratio:\t%g %g\n",
-            partree->ratio.sapwood,partree->ratio.root);
+  fprintf(file,"rel. C:N ratio:\t%g %g\n",
+          partree->ratio.sapwood,partree->ratio.root);
   if(par->phenology==SUMMERGREEN)
     fprintf(file,"aphen:\t\t%g %g\n",partree->aphen_min,partree->aphen_max);
   fprintf(file,"max height:\t%g (m)\n"
@@ -52,7 +55,7 @@ void fprintpar_tree(FILE *file,       /**< pointer to text file */
                "bark thickness:\t%g %g\n",
           partree->height_max,partree->reprod_cost,
           partree->k_est,partree->barkthick_par1,partree->barkthick_par2);
-  if(config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX)
+  if(isspitfire(config))
   {
     fprintf(file,"scorch height:\t%g\n"
                  "crown length:\t%g\n"

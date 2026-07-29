@@ -20,6 +20,8 @@
 typedef struct
 {
   Stocks stocks; /**< maximum error in local stock flux balance (g/m2) */
+  Stocks stocks_fcn; /**< maximum error in function stock flux balance (g/m2) */
+  Real w_fcn;  /**< maximum error in function water balance (mm) */
   Real w_local;  /**< maximum error in local water balance (mm) */
   Real w_global; /**< maximum error in global water balance (mm) */
 } Error_limit;
@@ -37,6 +39,7 @@ typedef struct
   Real soil_infil;      /**< soil infiltration */
   Real soil_infil_litter; /**< soil infiltration intensification by litter cover*/
   Real k;
+  Real pch4;       /* Initial concentration of atmospheric CH4 (ppb) */
   Real theta;      /**< co-limitation (shape) parameter */
   Real alphac3;    /**< intrinsic quantum efficiency of CO2 uptake in C4 plants */
   Real alphac4;    /**< intrinsic quantum efficiency of CO2 uptake in C3 plants */
@@ -60,6 +63,7 @@ typedef struct
   Real k_mort;       /**< coefficient of growth efficiency in mortality equation (k_mort2) */
   Real fpc_tree_max; /**< maximum foliage projective cover for trees */
   Real temp_response; /**< parameter in temperature response function */
+  Real tscal_b;      /**< exponential scaling factor for b */
   Real percthres;
   Real p;            /**< regression coefficent from Haxeltine and Prentice : N=p Vmax+n0 */
   Real n0;           /**< regression coefficient from Haxltine and Prentice */
@@ -77,8 +81,15 @@ typedef struct
   Real sat_level[4];   /**< saturation level for the three irrigation systems (surf,sprink,drip) */
   Real drip_evap;        /**< reduction of drip soil evap */
   Real firedura;        /**< scaling factor for fire duration */
+  Real fireduration[2]; /**< default min/max daily fire duration interval (minutes) */
+  int max_ndayfire;      /**< default maximum fire duration (days) */
+  Real lightning_eff_rate; /**< efficiency in starting lightning-caused fires (0..1) */
+  Real cg_ratio;         /**< cloud to ground flashes ratio */
   Real fire_intens;     /**< threshold of fireintensity for which burnt area can be modeled */
+  Real intensity_limit; /**< intensity limit under which a fire cannot burn */
   Real hum_ign;         /**< a parameter for scaling the human ignintions within SPITFIRE */
+  Real ign_factor;      /**< used to scale human ignitions to balance human and lightning ignitions */
+  Real k_ign_prob;      /**< scaling factor for human ignition probabilities */
   Real residues_in_soil;  /**< minimum residues in soil*/
   Real nfert_split;     /**< threshold fertilizer input for split application */
   Real manure_cn;       /* CN ratio of applied manure gC/gN */
@@ -98,6 +109,7 @@ typedef struct
   Real harvest_fast_frac;  /**< fraction of harvested wood going to fast pools */
   Real esoil_reduction; /**< reduction of soil evaporation */
   Poolpar product_turnover; /**< fast and slow product turnover (1/yr) */
+  int luc_burn_startyear; /**< start year of land-use change burning instead of harvesting to product pools */
   Real rw_buffer_max;   /**< size of rainwater harvesting tank */
   Real frac_ro_stored;  /**< fraction of surface runoff stored in tank */
   Real rw_irrig_thres;  /**< threshold to apply rw_irrigation */

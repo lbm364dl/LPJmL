@@ -23,12 +23,13 @@ struct landcover
   int size;
 };
 
-Landcover initlandcover(int npft,            /**< number of natural PFTs */
-                        const Config *config /**< LPJmL configuration */
-                       )                     /** \return landcover data or NULL */
+Landcover initlandcover(int npft,      /**< number of natural PFTs */
+                        Config *config /**< LPJmL configuration */
+                       )               /** \return landcover data or NULL */
 {
-  Landcover landcover;
   int i;
+  Map *map=NULL;
+  Landcover landcover;
   
   landcover=new(struct landcover);
   if(landcover==NULL)
@@ -36,8 +37,40 @@ Landcover initlandcover(int npft,            /**< number of natural PFTs */
     printallocerr("landcover");
     return NULL;
   }
-  if(opendata(&landcover->file,&config->landcover_filename,"landcover","1",LPJ_FLOAT,LPJ_SHORT,0.01,config->landcovermap_size,TRUE,config))
+  if(opendata(&landcover->file,&map,NULL,NULL,&config->landcover_filename,"landcover","1",LPJ_FLOAT,LPJ_SHORT,0.01,getnnat(npft,config),FALSE,config))
   {
+    free(landcover);
+    return NULL;
+  }
+  if(config->landcovermap==NULL)
+  {
+    /* No landcovermap defined in lpjml configuration file */
+    if(map==NULL)
+    {
+      /* no map found, set default 1:1 map */
+      config->landcovermap=defaultpftmap("landcovermap",getnnat(npft,config),config);
+      config->landcovermap_size=getnnat(npft,config);
+    }
+    else
+    {
+      /* get landcovermap from input file */
+      config->landcovermap=getpftmap(map,"landcovermap",getnnat(npft,config),config);
+      config->landcovermap_size=getmapsize(map);
+    }
+    if(config->landcovermap==NULL)
+    {
+      freemap(map);
+      free(landcover);
+      return NULL;
+    }
+  }
+  freemap(map);
+  if(landcover->file.var_len!=config->landcovermap_size)
+  {
+    if(isroot(*config))
+      fprintf(stderr,
+              "ERROR147: Invalid number of bands=%zu in landcover data file, must be %d\n",
+              landcover->file.var_len,config->landcovermap_size);
     free(landcover);
     return NULL;
   }

@@ -16,7 +16,7 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 
 #define error(var,rc) if(rc) {if(isroot(*config))fprintf(stderr,"ERROR403: Cannot read '%s' in '%s': %s.\n",var,filename,nc_strerror(rc)); return TRUE;}
@@ -27,7 +27,7 @@ Bool getlatlon_netcdf(Climatefile *file,    /**< Climate data */
                       const Config *config  /**< LPJ configuration */
                      )                      /** \return TRUE on error */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int rc,var_id,*dimids,ndims,index;
   char name[NC_MAX_NAME+1];
   double *dim;
@@ -51,11 +51,15 @@ Bool getlatlon_netcdf(Climatefile *file,    /**< Climate data */
   rc=nc_inq_varid(file->ncid,name,&var_id);
   if(rc)
   {
-    if(isroot(*config))
-      fprintf(stderr,"ERROR410: Cannot read %s in '%s': %s.\n",
-              name,filename,nc_strerror(rc));
-    free(dimids);
-    return TRUE;
+    rc=nc_inq_varid(file->ncid,config->netcdf.lon.name,&var_id);
+    if(rc)
+    {
+      if(isroot(*config))
+        fprintf(stderr,"ERROR410: Cannot read %s in '%s': %s.\n",
+                config->netcdf.lon.name,filename,nc_strerror(rc));
+      free(dimids);
+      return TRUE;
+    }
   }
   nc_inq_varndims(file->ncid,var_id,&ndims);
   if(ndims!=1)
@@ -106,11 +110,15 @@ Bool getlatlon_netcdf(Climatefile *file,    /**< Climate data */
   rc=nc_inq_varid(file->ncid,name,&var_id);
   if(rc)
   {
-    if(isroot(*config))
-      fprintf(stderr,"ERROR410: Cannot read %s in '%s': %s.\n",
-              name,filename,nc_strerror(rc));
-    free(dimids);
-    return TRUE;
+    rc=nc_inq_varid(file->ncid,config->netcdf.lat.name,&var_id);
+    if(rc)
+    {
+      if(isroot(*config))
+        fprintf(stderr,"ERROR410: Cannot read %s in '%s': %s.\n",
+                config->netcdf.lat.name,filename,nc_strerror(rc));
+      free(dimids);
+      return TRUE;
+    }
   }
   nc_inq_varndims(file->ncid,var_id,&ndims);
   if(ndims!=1)

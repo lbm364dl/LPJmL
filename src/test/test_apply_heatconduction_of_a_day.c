@@ -12,6 +12,7 @@
 #include "unity.h" 
 /* lpjml modules under test */
 #include "apply_heatconduction_of_a_day.h"
+#include "thomas_algorithm.h"
 #include "compute_mean_layer_temps_from_enth.h"
 #include "calc_soil_thermal_props.h"
 /* lpjml modules mocked */
@@ -163,7 +164,7 @@ void test_thomas_algorithm_correctly_solves_tridiagonal_linear_system(void)
 
   /* Apply the algorithm */
   Real result[6]; /* vector used to store the return value of the function */
-  thomas_algorithm(sub, main, sup, rhs, result);
+  thomas_algorithm(sub, main, sup, rhs, result, NHEATGRIDP);
 
   /* Verify that the result is as expected */
   int i;

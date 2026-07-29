@@ -31,7 +31,7 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
                          Real melt,                   /**< melting water (mm/day) */
                          int npft,                    /**< number of natural PFTs */
                          int ncft,                    /**< number of crop PFTs   */
-                         int UNUSED(year),            /**< simulation year (AD) */
+                         int year,                    /**< simulation year (AD) */
                          Bool UNUSED(intercrop),      /**< enabled intercropping */
                          Real UNUSED(agrfrac),        /**< [in] total agriculture fraction (0..1) */
                          const Config *config         /**< LPJ config */
@@ -94,34 +94,31 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
 
   for(l=0;l<LASTLAYER;l++)
     aet_stand[l]=green_transp[l]=0;
-  if (config->with_nitrogen)
+  if(stand->cell->ml.fertilizer_nr!=NULL) /* has to be adapted if fix_fertilization option is added */
   {
-    if(stand->cell->ml.fertilizer_nr!=NULL) /* has to be adapted if fix_fertilization option is added */
+    if(day==fertday_biomass(stand->cell,config))
     {
-      if(day==fertday_biomass(stand->cell,config))
-      {
-        fertil = stand->cell->ml.fertilizer_nr[data->irrigation].biomass_grass;
-        stand->soil.NO3[0]+=fertil*param.nfert_no3_frac;
-        stand->soil.NH4[0]+=fertil*(1-param.nfert_no3_frac);
-        stand->cell->balance.influx.nitrogen+=fertil*stand->frac;
-        getoutput(output,NFERT_AGR,config)+=fertil*stand->frac;
-        getoutput(output,NAPPLIED_MG,config)+=fertil*stand->frac;
-      } /* end fday==day */
-    }
-    if(stand->cell->ml.manure_nr!=NULL) /* has to be adapted if fix_fertilization option is added */
+      fertil = stand->cell->ml.fertilizer_nr[data->irrigation].biomass_grass;
+      stand->soil.NO3[0]+=fertil*param.nfert_no3_frac;
+      stand->soil.NH4[0]+=fertil*(1-param.nfert_no3_frac);
+      stand->cell->balance.influx.nitrogen+=fertil*stand->frac;
+      getoutput(output,NFERT_AGR,config)+=fertil*stand->frac;
+      getoutput(output,NAPPLIED_MG,config)+=fertil*stand->frac;
+    } /* end fday==day */
+  }
+  if(stand->cell->ml.manure_nr!=NULL) /* has to be adapted if fix_fertilization option is added */
+  {
+    if(day==fertday_biomass(stand->cell,config) && stand->soil.litter.n>0)
     {
-      if(day==fertday_biomass(stand->cell,config) && stand->soil.litter.n>0)
-      {
-        manure = stand->cell->ml.manure_nr[data->irrigation].biomass_grass;
-        stand->soil.NH4[0] += manure*param.nmanure_nh4_frac;
-        stand->soil.litter.item->agsub.leaf.carbon += manure*param.manure_cn;
-        stand->soil.litter.item->agsub.leaf.nitrogen += manure*(1-param.nmanure_nh4_frac);
-        stand->cell->balance.influx.carbon += manure*param.manure_cn*stand->frac;
-        stand->cell->balance.influx.nitrogen += manure*stand->frac;
-        getoutput(&stand->cell->output,NMANURE_AGR,config)+=manure*stand->frac;
-        getoutput(&stand->cell->output,NAPPLIED_MG,config)+=manure*stand->frac;
-      } /* end fday==day */
-    }
+      manure = stand->cell->ml.manure_nr[data->irrigation].biomass_grass;
+      stand->soil.NH4[0] += manure*param.nmanure_nh4_frac;
+      stand->soil.litter.item->agsub.leaf.carbon += manure*param.manure_cn;
+      stand->soil.litter.item->agsub.leaf.nitrogen += manure*(1-param.nmanure_nh4_frac);
+      stand->cell->balance.influx.carbon += manure*param.manure_cn*stand->frac;
+      stand->cell->balance.influx.nitrogen += manure*stand->frac;
+      getoutput(&stand->cell->output,NMANURE_AGR,config)+=manure*stand->frac;
+      getoutput(&stand->cell->output,NAPPLIED_MG,config)+=manure*stand->frac;
+    } /* end fday==day */
   }
 
   /* green water inflow */
@@ -172,21 +169,26 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
   }
   irrig_apply-=intercep_stand_blue;
   rainmelt-=(intercep_stand-intercep_stand_blue);
+  irrig_apply=max(0,irrig_apply);
 
   /* soil inflow: infiltration and percolation */
   if(irrig_apply>epsilon)
   {
-    vol_water_enth = climate->temp*c_water+c_water2ice;  /* enthalpy of soil infiltration */
-    runoff+=infil_perc_irr(stand,irrig_apply,vol_water_enth,&return_flow_b,npft,ncft,config);
     /* count irrigation events*/
     getoutputindex(output,CFT_IRRIG_EVENTS,index,config)++; /* id is consecutively counted over natural pfts, biomass, and the cfts; ids for cfts are from 12-23, that is why npft (=12) is distracted from id */
   }
 
-  if(climate->prec+melt>0)  /* enthalpy of soil infiltration */
-    vol_water_enth = climate->temp*c_water*climate->prec/(climate->prec+melt)+c_water2ice;
+  if((climate->prec+melt+irrig_apply)>0) /* enthalpy of soil infiltration */
+    vol_water_enth = climate->temp*c_water*(climate->prec+irrig_apply)/(climate->prec+irrig_apply+melt)+c_water2ice;
   else
     vol_water_enth=0;
-  runoff+=infil_perc_rain(stand,rainmelt,vol_water_enth,&return_flow_b,npft,ncft,config);
+#ifdef DEBUG
+  String line;
+  if(rainmelt+irrig_apply < 0)
+    fprintf(stderr,"WARNING044: Negative water input to infiltration on day %d of year %d in cell (%s): rainmelt=%g, irrig_apply=%g\n",
+            day,year,sprintcoord(line,&stand->cell->coord),rainmelt, irrig_apply);
+#endif
+  runoff+=infil_perc(stand,rainmelt+irrig_apply, vol_water_enth,climate->prec,&return_flow_b,npft,ncft,config);
 
   isphen=FALSE;
   foreachpft(pft,p,&stand->pftlist)
@@ -216,12 +218,12 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
         getoutputindex(output,PFT_GCGP,nnat+index,config)+=gcgp;
       }
     }
-    npp=npp_grass(pft,gtemp_air,gtemp_soil,gpp-rd-pft->npp_bnf,config->with_nitrogen);
-    pft->npp_bnf=0.0;
+    npp=npp_grass(pft,gtemp_air,gtemp_soil,gpp-rd-pft->npp_bnf-pft->npp_nrecovery,config);
+    pft->npp_bnf=pft->npp_nrecovery=0.0;
     getoutput(output,NPP,config)+=npp*stand->frac;
     stand->cell->balance.anpp+=npp*stand->frac;
     stand->cell->balance.agpp+=gpp*stand->frac;
-    output->dcflux-=npp*stand->frac;
+    output->dcflux-=npp*stand->frac;                       //daily allocation set bm_inc.carboon to zero
     getoutput(output,GPP,config)+=gpp*stand->frac;
     getoutput(output,FAPAR,config) += pft->fapar * stand->frac * (1.0/(1-stand->cell->lakefrac-stand->cell->ml.reservoirfrac));
     getoutput(output,PHEN_TMIN,config) += pft->fpc * pft->phen_gsi.tmin * stand->frac * (1.0/(1-stand->cell->lakefrac-stand->cell->ml.reservoirfrac));
@@ -242,34 +244,28 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
   /* calculate water balance */
   free(gp_pft);
   waterbalance(stand,aet_stand,green_transp,&evap,&evap_blue,wet_all,eeq,cover_stand,
-               &frac_g_evap,config->rw_manage);
+               &frac_g_evap,config->rw_manage,config);
 
   /* allocation, turnover and harvest AFTER photosynthesis */
-  if(config->with_nitrogen)
+  if(n_pft>0)
   {
-    if(n_pft>0)
-    {
-      fpc_inc=newvec(Real,n_pft);
-      check(fpc_inc);
+    fpc_inc=newvec(Real,n_pft);
+    check(fpc_inc);
 
-      foreachpft(pft,p,&stand->pftlist)
+    foreachpft(pft,p,&stand->pftlist)
+    {
+      grass=pft->data;
+      grasspar=pft->par->data;
+      if (pft->bm_inc.carbon > 5.0|| day==NDAYYEAR)
       {
-        grass=pft->data;
-        grasspar=pft->par->data;
-        if (pft->bm_inc.carbon > 5.0|| day==NDAYYEAR)
+        turnover_grass(&stand->soil.litter,pft,1.0/NDAYYEAR,config);
+        if(allocation_grass(&stand->soil.litter,pft,fpc_inc+p,config))
         {
-          turnover_grass(&stand->soil.litter,pft,1.0/NDAYYEAR,config);
-          if(allocation_grass(&stand->soil.litter,pft,fpc_inc+p,config))
-          {
-            /* kill PFT from list of established PFTs */
-            fpc_inc[p]=fpc_inc[getnpft(&stand->pftlist)-1]; /*moved here by W. von Bloh */
-            litter_update_grass(&stand->soil.litter,pft,pft->nind,config);
-            delpft(&stand->pftlist,p);
-            p--; /* adjust loop variable */
-          }
-          else
-           // pft->bm_inc.carbon=pft->bm_inc.nitrogen=0;
-           pft->bm_inc.carbon=0;
+          /* kill PFT from list of established PFTs */
+          fpc_inc[p]=fpc_inc[getnpft(&stand->pftlist)-1]; /*moved here by W. von Bloh */
+          litter_update_grass(&stand->soil.litter,pft,pft->nind,config);
+          delpft(&stand->pftlist,p);
+          p--; /* adjust loop variable */
         }
         else
         {
@@ -279,9 +275,9 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
           grass->turn_litt.root.carbon+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR*pft->nind;
           grass->turn.root.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR;
           stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*pft->par->fn_turnover;
+          pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*(1-pft->par->fn_turnover);
           getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*pft->par->fn_turnover*stand->frac;
           grass->turn_litt.root.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind;
-
           grass->growing_days++;
           fpc_inc[p]=0;
         }
@@ -289,14 +285,6 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
       light(stand,fpc_inc,config);
       free(fpc_inc);
     }
-  }
-  else
-  {
-    stand->growing_days = 1;
-    /* turnover must happen before allocation */
-    foreachpft(pft,p,&stand->pftlist)
-      turnover_grass(&stand->soil.litter,pft,(Real)stand->growing_days/NDAYYEAR,config);
-    allocation_today(stand,config);
   }
   /* daily turnover and harvest check*/
   isphen=FALSE;
@@ -363,7 +351,7 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
   } /* of if(isphen) */
 
   if(data->irrigation && stand->pftlist.n>0) /*second element to avoid irrigation on just harvested fields */
-    calc_nir(stand,data,gp_stand,wet,eeq,config->others_to_crop);
+    calc_nir(stand,data,gp_stand,wet,eeq,config);
   transp=0;
   forrootsoillayer(l)
   {

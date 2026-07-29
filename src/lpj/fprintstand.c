@@ -19,19 +19,25 @@
 void fprintstand(FILE *file,           /**< Pointer to text file */
                  const Stand *stand,   /**< Stand pointer */
                  const Pftpar *pftpar, /**< PFT parameter array */
-                 int ntotpft,          /**< total number of PFTs */
-                 int with_nitrogen     /**< nitrogen cycle enabled */
+                 int ntotpft           /**< total number of PFTs */
                 )
 {
   int l;
   fprintf(file,"Standfrac:\t%g\n",stand->frac);
   fprintf(file,"Standtype:\t%s\n",stand->type->name);
+  fprintf(file, "Hag Beta value:\t%g\n", stand->Hag_Beta);
+  fprintf(file, "Slope mean value:\t%g\n", stand->slope_mean);
   /* print stand-specific data */
   stand->type->fprint(file,stand,pftpar);
-  fprintsoil(file,&stand->soil,pftpar,ntotpft,with_nitrogen);
+  fprintsoil(file,&stand->soil,pftpar,ntotpft);
   fputs("Frac_g:\t\t",file);
   for(l=0;l<NSOILLAYER;l++)
     fprintf(file,"%.2f ",stand->frac_g[l]);
   fputc('\n',file);
-  fprintpftlist(file,&stand->pftlist,with_nitrogen);
+  if(stand->fires!=NULL)
+  {
+    fputs("Fire queue:",file);
+    fprintqueue(file,stand->fires);
+  }
+  fprintpftlist(file,&stand->pftlist);
 } /* of 'fprintstand' */

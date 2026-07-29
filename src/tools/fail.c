@@ -20,31 +20,69 @@
 #include <string.h>
 #include "types.h"
 
+int error_count=0; /* number of fail calls */
+
+static void printfailerr2(int errcode,Bool stop,const char *msg,va_list ap)
+{
+  char *s;
+  int len;
+  if(stop)
+    len=strlen(msg)+strlen("ERROR000: ")+strlen(".\nProgram terminated unsuccessfully.\n")+1;
+  else
+    len=strlen(msg)+strlen("ERROR000: ")+strlen(".\n")+1;
+  /*
+   * Output is put in one printf statement. This has to be done because output
+   * in multiple printf's is mixed up in the parallel version using MPI
+   */
+  s=alloca(len);
+  if(errcode>999)
+    errcode=999;
+  if(errcode<0)
+    errcode=1;
+  snprintf(s,len,"ERROR%03d: ",errcode);
+  strcat(s,msg);
+  strcat(s,(stop) ? ".\nProgram terminated unsuccessfully.\n" : ".\n");
+  vfprintf(stderr,s,ap);
+  fflush(stderr);
+}  /* of 'printfailerr2' */
+
+void printfailerr(int errcode,     /**< Error code (0...999) */
+                  Bool stop,       /**< terminate program */
+                  const char *msg, /**< error format string */
+                  ...              /**< optional parameter for output */
+                 )
+{
+  va_list ap;
+  va_start(ap,msg);
+  printfailerr2(errcode,stop,msg,ap);
+  va_end(ap);
+}  /* of 'printfailerr' */
+
 void fail(int errcode,     /**< Error code (0...999) */
+          Bool stop,       /**< terminate program */
           Bool core,       /**< generate core file (TRUE/FALSE) */
           const char *msg, /**< error format string */
           ...              /**< optional parameter for output */
          )
 {
-  char *s;
   va_list ap;
-  /*
-   * Output is put in one printf statement. This has to be done because output
-   * in multiple printf's is mixed up in the parallel version using MPI
-   */
-  s=alloca(strlen(msg)+strlen("ERROR000: ")+strlen(", program terminated unsuccessfully.\n")+1);
-  if(errcode>999)
-    errcode=999;
-  if(errcode<0)
-    errcode=1;
-  sprintf(s,"ERROR%03d: ",errcode);
-  strcat(s,msg);
-  strcat(s,", program terminated unsuccessfully.\n");
-  va_start(ap,msg);
-  vfprintf(stderr,s,ap);
-  fflush(stderr);
-  va_end(ap);
-  if(core)
+  if(msg==NULL)
+  {
+    if(stop)
+    {
+      fprintf(stderr,"Program terminated unsuccessfully.\n");
+      fflush(stderr);
+    }
+  }
+  else
+  {
+    va_start(ap,msg);
+    printfailerr2(errcode,stop,msg,ap);
+    va_end(ap);
+  }
+  if(stop && core)
     abort(); /* generate core file for post-mortem analysis */
-  exit(errcode);
+  if(stop)
+    exit(errcode);
+  error_count++;
 } /* of 'fail' */

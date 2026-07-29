@@ -83,6 +83,21 @@ typedef struct
   Real surface_storage;     /**< total water in surface storages (dm3) */
   Real surface_storage_last;     /**< total water in surface storages (dm3) */
   Real soil_storage_last;        /**< total water in soil storages (dm3) */
+#ifdef CHECK_BALANCE
+  Real daily_prec_last;          /**< daily snapshot of aprec for water balance check (mm) */
+  Real daily_evap_last;          /**< daily snapshot of aevap for water balance check (mm) */
+  Real daily_transp_last;        /**< daily snapshot of atransp for water balance check (mm) */
+  Real daily_interc_last;        /**< daily snapshot of ainterc for water balance check (mm) */
+  Real daily_evap_lake_last;     /**< daily snapshot of aevap_lake for water balance check (mm) */
+  Real daily_evap_res_last;      /**< daily snapshot of aevap_res for water balance check (mm) */
+  Real daily_conv_loss_last;     /**< daily snapshot of aconv_loss_evap for water balance check (mm) */
+  Real daily_wateruse_last;      /**< daily snapshot of awateruse_hil for water balance check */
+  Real daily_excess_last;        /**< daily snapshot of excess_water for water balance check (mm) */
+  Real daily_MT_water_last;      /**< daily snapshot of aMT_water for water balance check (mm) */
+  Real daily_discharge_last;          /**< daily snapshot of adischarge for water balance check */
+  Real daily_surface_prev;       /**< global total surface storage from previous day (dm3) */
+  Real daily_soil_prev;          /**< global total soil storage from previous day (dm3) */
+#endif
   Real excess_water;        /**< excess water (mm) */
   Real total_reservoir_out; /**< total water extracted from reservoirs (dm3) */
   Real total_irrig_from_reservoir; /**< total water added to fields from reservoirs (dm3)*/
@@ -90,6 +105,18 @@ typedef struct
   Real n_outflux;           /**< all N outputs: n2onit, n2odenit, n2denit, leaching */
   Real n_demand;            /**< N demand by plants (gN)*/
   Real n_uptake;            /**< N uptake by plants (gN) */
+  Real aCH4_em;             /**< includes mCH4_em */
+  Real aCH4_sink;           /**< mCH4_sink */
+  Real aCH4_fire;           /**< CH4 emissions from fire */
+  Real aCH4_rice;           /**< CH4 emissions from rice stands*/
+  Real aCH4_agr;
+  Real aCH4_oxid;
+  Real aCH4_grassland;
+  Real aMT_water;          /**< water produced during Methanogenesis */
+  Real temp;               /**< air temperature (celsius) */
+  Real nat_fluxes;         //at the moment only
+  Real gw_withdrawal;      /**< ground water withdrawal */
+  Real ricefrac;           /**< rice fraction (0..1) */
 } Balance;
 
 typedef struct celldata *Celldata;
@@ -101,9 +128,10 @@ struct cell
   Climbuf climbuf;
   Ignition ignition;
   Real landfrac;            /**< land fraction ((0..1]) */
-  Real afire_frac;          /**< fraction of grid cell burnt this year */
   Real *gdd;                /**< Growing degree days array */
   Real lakefrac;            /**< lake fraction (0..1) */
+  Real icefrac;             /**< ice fraction (0..1) */
+  Real wetlandfrac;         /**< wetland fraction (0..1) */
 #ifdef COUPLING_WITH_FMS
   Real laketemp;            /**< temperatures in this cell, for now only one layer */
   Real day_after_snowfall;  /**< days after snowfall, to compute the albedo of lakes following:
@@ -117,18 +145,35 @@ Received 19 November 1997; accepted 15 January 1999*/
   Real snowpool_above_lake; /**< temporarily storing the snow mass on a lake*/
 #endif
   Real soilph;              /**< soil pH */
+  Real fsoilph;             /**< ph dependence needed for nitrification */
   Bool skip;                /**< Invalid soil code in cell (TRUE/FALSE) */
+  Bool was_glaciated;       /**< cell was fully covered with ice in previous year*/
+  Bool is_glaciated;        /**< cell is fully covered with ice */
   Managed_land ml;          /**< Managed land */
   Output output;            /**< Output data */
   Discharge discharge;
   int elevation;            /**< cell elevation (m) */
   const Real *landcover;    /**< prescribed landcover or NULL */
+  Real slope;
+  Real slope_min;
+  Real slope_max;
+  Real kbf;                 /**< baseflow recession coefficient */
+  Real Hag_beta;            /**< Haggard et al. 2005, effects of slope on runoff 2005*/
+  Real ground_st;
+  Real ground_st_am;
+  Real lateral_water;       /**< water which will be transported from upland area to lowland area */
+  Real NO3_lateral;         /**< leached NO3 transported to wetland    */
+  Hydrotope hydrotopes;
   Balance balance;          /**< balance checks */
+  Real max_firesize;        /**< maximum fire size (hectare) */
+  Real gsi_cum;             /**< cumulative growing season index  */
+  FWIdata fwi_data;         /**< Canadian fire weather index data */
+  Real fwi;                 /**< Candian fire weather index */
   Seed seed;                /**< seed for random generator */
 #if defined IMAGE && defined COUPLED
   Real npp_nat;             /**< NPP natural stand */
   Real npp_wp;              /**< NPP woodplantation */
-  Real npp_grass;           /**< NPP woodplantation */
+  Real npp_grass;           /**< NPP grassland */
   Real flux_estab_nat;      /**< flux_estab natural stand */
   Real rh_nat;              /**< soil respiration natural stand */
   Real flux_estab_wp;       /**< flux_estab woodplantation */
@@ -142,38 +187,40 @@ Received 19 November 1997; accepted 15 January 1999*/
 
 extern void freegrid(Cell [],int,const Config *);
 extern void freecell(Cell *,int,const Config *);
-extern void update_daily(Cell *,Real,Real,Dailyclimate,int,
-                         int,int,int,int,Bool,const Config *);
-extern void update_annual(Cell *,int,int,
-                          int,Bool,Bool,const Config *);
-extern void update_monthly(Cell *,Real,Real,int,const Config *);
+extern void update_daily_cell(Cell *,int,Dailyclimate *,Real,Real,Input *,int,int,int,
+                              int,int,int,Bool,const Config *);
+extern void update_annual_cell(Cell *,int,int,
+                               int,Bool,Bool,const Config *);
+extern void update_monthly_grid(Outputfile *,Cell *,Climate *,int,int,int,int,const Config *);
 extern void init_annual(Cell *,int,const Config *);
-extern int fwritecell(FILE *,long long [],const Cell [],int,int,int,Bool,const Config *);
+extern int fwritecell(Bstruct,long long [],const Cell [],int,int,int,Bool,const Config *);
 extern void fprintcell(FILE *,const Cell [],int,int,int,const Config *);
-extern Bool freadcell(FILE *,Cell *,int,int,const Soilpar *,
-                      const Standtype [],int,Bool,Config *);
+extern Bool freadcell(Bstruct,Cell *,int,int,const Soilpar *,
+                      Config *);
 extern int writecoords(Outputfile *,int,const Cell [],const Config *);
 extern int writearea(Outputfile *,int,const Cell [],const Config *);
 extern int writecountrycode(Outputfile *,int,const Cell [],const Config *);
 extern int iterate(Outputfile *,Cell [],Input,
                    int,int,Config *);
-extern void iterateyear(Outputfile *,Cell [],Input,
-                        Real,int,int,int,const Config *);
+extern void fwriteoutput_ch4(Outputfile *,Real,Real,int,const Config *);
+extern Bool iterateyear(Outputfile *,Cell [],Input *,
+                        Real,Real *,Real *,int,int,int,const Config *);
 extern void initoutputdata(Output *,int,int,const Config *);
-extern void fwriteoutput(Outputfile *,Cell [],int,int,int,int,int,const Config *);
+extern Bool fwriteoutput(Outputfile *,Cell [],int,int,int,int,int,const Config *);
 extern void equilsom(Cell *,int, const Pftpar [],Bool);
 extern void equilveg(Cell *,int);
 extern void check_fluxes(Cell *,int,int,const Config *);
 extern void check_balance(Flux,int,const Config *);
 extern Bool initdrain(Cell [],Config *);
+extern Bool inithydro(Cell *, Config *);
 extern void drain(Cell [],int,const Config *);
 extern Real nep_sum(const Cell [],const Config *);
 extern Real cflux_sum(const Cell [],const Config *);
 extern Real flux_sum(Flux *,Cell [],const Config *);
 extern Bool getwateruse(Wateruse, Cell [],int,const Config *);
-extern Wateruse initwateruse(const Filename *,const Config *);
+extern Wateruse initwateruse(const Filename *,Config *);
 #ifdef IMAGE
-extern Bool getwateruse_wd(Wateruse, Cell[], int, const Config *);
+extern Bool getwateruse_wd(Wateruse, Cell[], int,const Config *);
 #endif
 extern void freewateruse(Wateruse,Bool);
 extern void killstand(Cell *,int,Bool,Bool,int,int,const Config *);
@@ -183,7 +230,18 @@ extern Bool seekcelldata(Celldata,int);
 extern Bool readcelldata(Celldata,Cell *,unsigned int *,int,Config *);
 extern void closecelldata(Celldata,const Config *);
 extern Real albedo(Cell *, Real , Real );
+extern void hydrotopes(Cell*);
+extern void update_wetland(Cell *, int, int,const Config *);
+extern void check_glaciated(Cell *,const Config *);
 extern Bool initoutput(Outputfile *,Cell [],int,int,Config *);
+extern Bool fwritestocks(Bstruct,const char *,const Stocks *);
+extern Bool fwritestocksarray(Bstruct,const char *,const Stocks [],int);
+extern Bool freadstocks(Bstruct,const char *,Stocks *);
+extern Bool freadstocksarray(Bstruct,const char *,Stocks [],int);
+extern Bool setupannual_grid(Outputfile*,Cell *,Input *,int,int,int,Bool,const Config *);
+extern void initmonthly_grid(Cell *,int,int,Climate *,const Config *);
+extern void updateannual_grid(Outputfile *,Cell *,Landcover,Real,Real *,Real *,int,int,int,Bool,Bool,const Config *);
+extern void updatedaily_grid(Outputfile *,Cell *,Extflow,int,int,int,int,int,const Config *);
 
 /* Definition of macros */
 

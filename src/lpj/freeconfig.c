@@ -29,6 +29,9 @@ void freeconfig(Config *config /**< LPJmL configuration */
                )
 {
   int i;
+  free(config->climate);
+  free(config->landuse);
+  freeconfig_netcdf(&config->netcdf);
   free(config->cmd);
   free(config->json_filename);
   free(config->coupled_model);
@@ -42,10 +45,13 @@ void freeconfig(Config *config /**< LPJmL configuration */
   free(config->outputdir);
   free(config->inputdir);
   free(config->restartdir);
+  freefilename(&config->kbf_filename);
+  freefilename(&config->slope_filename);
+  freefilename(&config->slope_min_filename);
+  freefilename(&config->slope_max_filename);
+  freefilename(&config->hydrotopes_filename);
   free(config->arglist);
   free(config->sim_name);
-  free(config->pft_index);
-  free(config->layer_index);
   free(config->json_suffix);
   freeattrs(config->global_attrs,config->n_global);
   if(config->with_lakes)
@@ -66,6 +72,14 @@ void freeconfig(Config *config /**< LPJmL configuration */
         pnet_free(config->irrig_res_back);
         freefilename(&config->elevation_filename);
         freefilename(&config->reservoir_filename);
+        if(config->reservoir_filename.fmt==CDF)
+        {
+          freefilename(&config->capacity_reservoir_filename);
+          freefilename(&config->area_reservoir_filename);
+          freefilename(&config->inst_cap_reservoir_filename);
+          freefilename(&config->height_reservoir_filename);
+          freefilename(&config->purpose_reservoir_filename);
+        }
       }
       pnet_free(config->irrig_neighbour);
       pnet_free(config->irrig_back);
@@ -78,17 +92,27 @@ void freeconfig(Config *config /**< LPJmL configuration */
   if (config->wateruse_wd_filename.name != NULL)
     freefilename(&config->wateruse_wd_filename);
 #endif
+#if !defined IMAGE || !defined COUPLED
+  free(config->coupled_host);
+#endif
   freefilename(&config->temp_filename);
   freefilename(&config->prec_filename);
-  if(config->with_radiation)
+  freefilename(&config->lwnet_filename);
+  freefilename(&config->swdown_filename);
+  if(config->isanomaly)
+    freefilename(&config->delta_lwnet_filename);
+  if(config->isanomaly)
+    freefilename(&config->delta_swdown_filename);
+  if(config->isanomaly)
   {
-    if(config->with_radiation!=RADIATION_SWONLY)
-      freefilename(&config->lwnet_filename);
-    freefilename(&config->swdown_filename);
+    freefilename(&config->delta_temp_filename);
+    freefilename(&config->delta_prec_filename);
+    if(config->with_glaciers)
+      freefilename(&config->icefrac_filename);
   }
-  else
-    freefilename(&config->cloud_filename);
   freefilename(&config->co2_filename);
+  if (config->with_methane && config->with_dynamic_ch4==PRESCRIBED_CH4)
+    freefilename(&config->ch4_filename);
   if(config->wet_filename.name!=NULL)
     freefilename(&config->wet_filename);
   for(i=0;i<config->n_out;i++)
@@ -104,36 +128,67 @@ void freeconfig(Config *config /**< LPJmL configuration */
   free(config->landcovermap);
   free(config->soilmap);
   free(config->npft);
-  if(config->ispopulation)
-    freefilename(&config->popdens_filename);
+  if(config->ishuman_ign_prob)
+    freefilename(&config->human_ign_prob_filename);
   if(config->grassharvest_filename.name!=NULL)
     freefilename(&config->grassharvest_filename);
-  if(config->with_nitrogen  || config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX)
-    freefilename(&config->wind_filename);
-  if(config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX)
+  freefilename(&config->wind_filename);
+  if(isspitfire(config))
   {
     if(config->fdi==WVPD_INDEX)
       freefilename(&config->humid_filename);
-    freefilename(&config->lightning_filename);
-    freefilename(&config->human_ignition_filename);
+    if(config->max_firesize)
+      freefilename(&config->max_firesize_filename);
+    if(config->prescribe_ignition)
+      freefilename(&config->ignition_filename);
+    else
+    {
+      freefilename(&config->lightning_filename);
+    }
     if(config->prescribe_burntarea)
       freefilename(&config->burntarea_filename);
+    if(config->ispopulation)
+    {
+      freefilename(&config->popdens_filename);
+      freefilename(&config->human_ignition_filename);
+    }
   }
-  if(config->fire==SPITFIRE_TMAX)
+  if(config->fire==SPITFIRE)
   {
     freefilename(&config->tmin_filename);
     freefilename(&config->tmax_filename);
   }
-  if(config->fire==SPITFIRE)
+  else if(config->fire==SPITFIRE_TAMP)
     freefilename(&config->tamp_filename);
   if(config->withlanduse!=NO_LANDUSE)
   {
     free(config->landusemap);
-     if(config->fertilizer_input==FERTILIZER || config->residue_treatment==READ_RESIDUE_DATA || config->tillage_type==READ_TILLAGE)
+    if(config->fertilizer_input==FERTILIZER)
+    {
       free(config->fertilizermap);
+      freefilename(&config->fertilizer_nr_filename);
+    }
+    if(config->manure_input)
+    {
+      free(config->manuremap);
+      freefilename(&config->manure_nr_filename);
+    }
+    if(config->residue_treatment==READ_RESIDUE_DATA)
+    {
+      free(config->residuemap);
+      freefilename(&config->residue_data_filename);
+    }
+    if(config->sdate_option>=PRESCRIBED_SDATE)
+    {
+      free(config->sdatemap);
+      freefilename(&config->sdate_filename);
+    }
+    if(config->crop_phu_option>=PRESCRIBED_CROP_PHU)
+    {
+      free(config->crop_phumap);
+      freefilename(&config->crop_phu_filename);
+    }
     free(config->mowingdays);
-    if(config->sdate_option==PRESCRIBED_SDATE || config->crop_phu_option==PRESCRIBED_CROP_PHU)
-      free(config->cftmap);
     if(config->tillage_type==READ_TILLAGE)
       freefilename(&config->with_tillage_filename);
     freecountrypar(config->countrypar,config->ncountries);
@@ -146,28 +201,15 @@ void freeconfig(Config *config /**< LPJmL configuration */
       freefilename(&config->sowing_cotton_ir_filename);
       freefilename(&config->harvest_cotton_ir_filename);
     }
-    if(config->sdate_option==PRESCRIBED_SDATE)
-      freefilename(&config->sdate_filename);
     if(config->prescribe_lsuha)
       freefilename(&config->lsuha_filename);
-    if (config->residue_treatment == READ_RESIDUE_DATA)
-      freefilename(&config->residue_data_filename);
-    if(config->crop_phu_option==PRESCRIBED_CROP_PHU)
-      freefilename(&config->crop_phu_filename);
   }
-  if(config->with_nitrogen)
+  if(!config->unlim_nitrogen && !config->no_ndeposition)
   {
-    if(config->with_nitrogen!=UNLIM_NITROGEN && !config->no_ndeposition)
-    {
-      freefilename(&config->no3deposition_filename);
-      freefilename(&config->nh4deposition_filename);
-    }
-    freefilename(&config->soilph_filename);
-    if(config->withlanduse!=NO_LANDUSE && config->fertilizer_input==FERTILIZER)
-      freefilename(&config->fertilizer_nr_filename);
-    if(config->withlanduse!=NO_LANDUSE&&config->manure_input)
-      freefilename(&config->manure_nr_filename);
+    freefilename(&config->no3deposition_filename);
+    freefilename(&config->nh4deposition_filename);
   }
+  freefilename(&config->soilph_filename);
   if(config->prescribe_landcover != NO_LANDCOVER)
     freefilename(&config->landcover_filename);
 

@@ -124,6 +124,7 @@ Bool fscanpft_tree(LPJfile *file, /**< pointer to LPJ file */
   pft->leaf_phenology=phenology_tree;
   pft->fwrite=fwrite_tree;
   pft->mix_veg=mix_veg_tree;
+  pft->mix_veg_stock=mix_veg_stock_tree;
   pft->fprint=fprint_tree;
   pft->fread=fread_tree;
   pft->litter_update=litter_update_tree;
@@ -134,6 +135,7 @@ Bool fscanpft_tree(LPJfile *file, /**< pointer to LPJ file */
   pft->lai=lai_tree;
   pft->actual_lai=actual_lai_tree;
   pft->free=free_tree;
+  pft->leafc=leafc_tree;
   pft->vegc_sum=vegc_sum_tree;
   pft->vegn_sum=vegn_sum_tree;
   pft->adjust=adjust_tree;
@@ -142,11 +144,13 @@ Bool fscanpft_tree(LPJfile *file, /**< pointer to LPJ file */
   pft->livefuel_consumption=livefuel_consum_tree;
   pft->turnover_monthly=turnover_monthly_tree;
   pft->turnover_daily=turnover_daily_tree;
+  pft->copy=copy_tree;
   pft->albedo_pft=albedo_tree;
   pft->nuptake=nuptake_tree;
   pft->ndemand=ndemand_tree;
   pft->vmaxlimit=vmaxlimit_tree;
   pft->agb=agb_tree;
+  pft->getb=getb;
   tree=new(Pfttreepar);
   if(tree==NULL)
   {
@@ -161,6 +165,8 @@ Bool fscanpft_tree(LPJfile *file, /**< pointer to LPJ file */
               pft->name);
     return TRUE;
   }
+  fscanbool2(verb,file,&tree->phen_to_one,pft->name,"phen_to_one");
+  fscanbool2(verb,file,&tree->rainyseason,pft->name,"rainyseason");
   fscantreephys2(verb,file,&tree->turnover,pft->name,"turnover");
   if(iskeydefined(file,"sla"))
   {
@@ -187,13 +193,10 @@ Bool fscanpft_tree(LPJfile *file, /**< pointer to LPJ file */
   tree->nc_ratio.leaf=1/tree->nc_ratio.leaf;
   tree->nc_ratio.sapwood=1/tree->nc_ratio.sapwood;
   tree->nc_ratio.root=1/tree->nc_ratio.root;
-  if(config->with_nitrogen)
-  {
-    fscanratio2(verb,file,&tree->ratio,pft->name,"ratio");
-  }
+  fscanratio2(verb,file,&tree->ratio,pft->name,"ratio");
   fscanreal2(verb,file,&tree->crownarea_max,pft->name,"crownarea_max");
   fscanreal2(verb,file,&wood_sapl,pft->name,"wood_sapl");
-  if(pft->phenology==SUMMERGREEN)
+  if(pft->phenology==SUMMERGREEN || pft->phenology==RAINGREEN)
   {
     fscanreal2(verb,file,&tree->aphen_min,pft->name,"aphen_min");
     fscanreal2(verb,file,&tree->aphen_max,pft->name,"aphen_max");
@@ -213,7 +216,7 @@ Bool fscanpft_tree(LPJfile *file, /**< pointer to LPJ file */
     return TRUE;
   }
   fscanreal2(verb,file,&tree->wood_density,pft->name,"wood_density");
-  if(config->fire==SPITFIRE || config->fire==SPITFIRE_TMAX)
+  if(isspitfire(config))
   {
     fscanreal2(verb,file,&tree->scorchheight_f_param,pft->name,"scorchheight_f_param");
     fscanreal2(verb,file,&tree->crownlength,pft->name,"crownlength");

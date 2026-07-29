@@ -28,105 +28,81 @@ int *fscanlandcovermap(LPJfile *file,       /**< pointer to LPJ config file */
   int *pftmap;
   Verbosity verbose;
   const char *s;
-  int pft,nnat;
+  int pft;
   Bool first;
-  nnat=getnnat(npft,config);
   verbose=(isroot(*config)) ? config->scan_verbose : NO_ERR;
-  if(iskeydefined(file,name))
+  array=fscanarray(file,size,name,verbose);
+  if(array==NULL)
+    return NULL;
+  pftmap=newvec(int,*size);
+  if(pftmap==NULL)
   {
-    array=fscanarray(file,size,name,verbose);
-    if(array==NULL)
-      return NULL;
-    pftmap=newvec(int,*size);
-    if(pftmap==NULL)
+    printallocerr(name);
+    return NULL;
+  }
+  undef=newvec(Bool,npft);
+  if(undef==NULL)
+  {
+    printallocerr(name);
+    free(pftmap);
+    return NULL;
+  }
+  for(pft=0;pft<npft;pft++)
+    undef[pft]=TRUE;
+  for(pft=0;pft<*size;pft++)
+  {
+    item=fscanarrayindex(array,pft);
+    if(isnull(item,NULL))
     {
-      printallocerr(name);
+      pftmap[pft]=NOT_FOUND;
+      continue;
+    }
+    if(!isstring(item,NULL))
+    {
+      if(verbose)
+        fprintf(stderr,"ERROR226: Datatype of element %d in map '%s' is not of type string.\n",
+                pft+1,name);
+      free(pftmap);
+      free(undef);
       return NULL;
     }
-    undef=newvec(Bool,nnat);
-    if(undef==NULL)
+    s=fscanstring(item,NULL,NULL,verbose);
+    if(s==NULL)
     {
-      printallocerr(name);
+      free(pftmap);
+      free(undef);
       return NULL;
     }
-    for(pft=0;pft<nnat;pft++)
-        undef[pft]=TRUE;
-    for(pft=0;pft<*size;pft++)
+    pftmap[pft]=findpftname(s,config->pftpar,npft);
+    if(pftmap[pft]!=NOT_FOUND)
+      undef[pftmap[pft]]=FALSE;
+    else
     {
-      item=fscanarrayindex(array,pft);
-      if(isnull(item,NULL))
+      if(verbose)
+        fprintf(stderr,"ERROR244: Unknown PFT \"%s\" in map '%s'.\n",s,name);
+      free(pftmap);
+      free(undef);
+      return NULL;
+    }
+  } /* of for(pft=0...) */
+  if(verbose)
+  {
+    first=TRUE;
+    for(pft=0;pft<npft;pft++)
+      if(undef[pft])
       {
-        pftmap[pft]=NOT_FOUND;
-        continue;
-      }
-      if(!isstring(item,NULL))
-      {
-        if(verbose)
-          fprintf(stderr,"ERROR226: Datatype of element %d in map '%s' is not of type string.\n",
-                  pft+1,name);
-        free(pftmap);
-        return NULL;
-      }
-      s=fscanstring(item,NULL,NULL,verbose);
-      if(s==NULL)
-      {
-        free(pftmap);
-        return NULL;
-      }
-      pftmap[pft]=findpftname(s,config->pftpar,nnat);
-      if(pftmap[pft]!=NOT_FOUND)
-        undef[pftmap[pft]]=FALSE;
-      else
-      {
-        if(verbose)
-          fprintf(stderr,"ERROR244: Unknown PFT \"%s\" in map '%s'.\n",s,name);
-        free(pftmap);
-        return NULL;
-      }
-    } /* of for(pft=0...) */
-    if(verbose)
-    {
-      first=TRUE;
-      for(pft=0;pft<nnat;pft++)
-        if(undef[pft])
+        if(first)
         {
-          if(first)
-          {
-            fprintf(stderr,"ERROR244: Map '%s' not defined for ",name);
-            first=FALSE;
-          }
-          else
-             fputs(", ",stderr);
-          fprintf(stderr,"'%s'",config->pftpar[pft].name);
+          fprintf(stderr,"WARNING010: Map '%s' not defined for ",name);
+          first=FALSE;
         }
-      if(!first)
-        fputs(".\n",stderr);
-    }
-    free(undef);
-  }
-  else
-  {
-    /* no map defined, set default one */
-    *size=nnat;
-    pftmap=newvec(int,nnat);
-    if(pftmap==NULL)
-    {
-      printallocerr("pftmap");
-      return NULL;
-    }
-    for(pft=0;pft<nnat;pft++)
-      pftmap[pft]=pft;
-    if(verbose)
-    {
-      fprintf(stderr,"WARNING011: Map '%s' not found, set to [",name);
-      for(pft=0;pft<nnat;pft++)
-      {
-        if(pft)
-          fputc(',',stderr);
-        fprintf(stderr,"\"%s\"",config->pftpar[pft].name);
+        else
+           fputs(", ",stderr);
+        fprintf(stderr,"'%s'",config->pftpar[pft].name);
       }
-      fputs("].\n",stderr);
-    }
+    if(!first)
+      fputs(", set to zero.\n",stderr);
   }
+  free(undef);
   return pftmap;
 } /* of 'fscanlandcovermap' */

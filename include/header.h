@@ -19,7 +19,6 @@
 /* Definition of constants */
 
 #define RESTART_HEADER "LPJRESTART"
-#define RESTART_VERSION 31
 #define LPJ_CLIMATE_HEADER "LPJCLIM"
 #define LPJ_CLIMATE_VERSION 3
 #define LPJ_LANDUSE_HEADER "LPJLUSE"
@@ -55,20 +54,29 @@
 #define LPJ_LANDCOVER_HEADER "LPJLCOV"
 #define LPJ_LANDCOVER_VERSION 3
 #define LPJ_FERTILIZER_HEADER "LPJFERT"
-#define LPJ_FERTILIZZER_VERSION 3
+#define LPJ_FERTILIZER_VERSION 3
 #define LPJ_SOILPH_HEADER "LPJ_SPH"
 #define LPJ_SOILPH_VERSION 3
 #define LPJ_TILLAGE_HEADER "LPJTILL"
 #define LPJ_TILLAGE_VERSION 2
 #define LPJ_CROPPHU_HEADER "LPJ_PHU"
 #define LPJ_CROPPHU_VERSION 3
+#define LPJ_HYDRO_HEADER "LPJHYDR"
+#define LPJ_HYDRO_VERSION 2
+#define LPJ_SLOPE_HEADER "LPJSLOP"
+#define LPJ_SLOPE_VERSION 2
+#define LPJ_SLOPE_MAX_HEADER "LPJSLMX"
+#define LPJ_SLOPE_MAX_VERSION 2
+#define LPJ_SLOPE_MIN_HEADER "LPJSLMN"
+#define LPJ_SLOPE_MIN_VERSION 2
+#define LPJ_KBF_HEADER "LPJ_KBF"
+#define LPJ_KBF_VERSION 2
 #define LPJ_LSUHA_HEADER "LPJLIVE"
 #define LPJ_LSUHA_VERSION 2
 #define CELLYEAR 1
 #define YEARCELL 2
 #define CELLINDEX 3
 #define CELLSEQ 4
-#define READ_VERSION -1
 #define CLM_MAX_VERSION 4  /**< highest version for clm files supported */
 #define MAP_NAME "map"     /**< name of map in JSON files */
 #define BAND_NAMES "band_names" /**< name of band string array in JSON metafiles */
@@ -131,16 +139,6 @@ typedef struct
 
 typedef struct
 {
-  Bool landuse;        /**< land use enabled (TRUE/FALSE) */
-  Bool river_routing;  /**< river routing enabled (TRUE/FALSE) */
-  int sdate_option;    /**< sowing date option (0-2)*/
-  Bool crop_option;    /**< prescribe crop PHU? (TRUE/FALSE) */
-  Bool separate_harvests; /**< double harvest output enabled */
-  Seed seed;           /**< Random seed */
-} Restartheader;
-
-typedef struct
-{
   List *list;
   Bool isfloat;
 } Map;
@@ -149,12 +147,10 @@ typedef struct
 
 extern Bool fwriteheader(FILE *,const Header *, const char *,int);
 extern Bool freadheader(FILE *,Header *,Bool *,const char *,int *,Bool);
-extern Bool freadrestartheader(FILE *,Restartheader *,Bool);
-extern Bool fwriterestartheader(FILE *,const Restartheader *);
 extern Bool freadanyheader(FILE *,Header *,Bool *,String,int *,Bool);
 extern Bool freadheaderid(FILE *,String,Bool);
 extern size_t headersize(const char *,int);
-extern FILE *openinputfile(Header *, Bool *,const Filename *,
+extern FILE *openinputfile(Header *,Map **,Attr **,int *, Bool *,const Filename *,
                            String,const char *,Type,int *,size_t *,Bool,const Config *);
 extern FILE *openmetafile(Header *,Map **,const char *,Attr **,int *,char **,char **,char **,char **,char **,char **,Filename *,Type *,int *,Bool *,size_t *,const char *,Bool);
 extern char *getfilefrommeta(const char *,Bool);
@@ -173,7 +169,6 @@ extern void fprintjson(FILE *,const char *,const char *,const char *,const char 
 
 #define printheader(header) fprintheader(stdout,header)
 #define printmap(map) fprintmap(stdout,map)
-#define restartsize() (5*sizeof(int)+sizeof(Seed)) /* size of Restartheader without padding */
 #define getmapsize(map) getlistlen((map)->list)
 #define getmapitem(map,i) getlistitem((map)->list,i)
 

@@ -12,6 +12,7 @@
 
 /* modules under test */
 #include "initsoil.h"
+#include "fail.h"
 #include "calc_soil_thermal_props.h"
 #include "compute_mean_layer_temps_from_enth.h"
 
@@ -23,7 +24,8 @@
 #include "support_pedotransfer_stub.h"
 
 /* global lpjml variables */
-Real layerbound[NSOILLAYER];
+Real logmidlayer[NSOILLAYER];
+
 
 void test_highest_bulk_dens_has_expected_thermal_cond(void)
 {

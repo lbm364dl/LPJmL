@@ -16,10 +16,11 @@
 
 #include "lpj.h"
 
-int getnsoilcode(const Filename *filename, /**< filename of soil code file */
-                 unsigned int nsoil,       /**< number of soil types */
-                 Bool isout                /**< error output? (TRUE/FALSE) */
-                )                          /** \return number of soil codes */
+int getnsoilcode(const Filename *filename,       /**< filename of soil code file */
+                 const Netcdf_config *nc_config, /**< NetCDF settings */
+                 unsigned int nsoil,             /**< number of soil types */
+                 Bool isout                      /**< error output? (TRUE/FALSE) */
+                )                                /** \return number of soil codes */
 {
   Coord_netcdf coord;
   int n, version;
@@ -29,7 +30,7 @@ int getnsoilcode(const Filename *filename, /**< filename of soil code file */
   Header header;
   if(filename->fmt==CDF)
   {
-    coord=opencoord_netcdf(filename->name,filename->var,isout);
+    coord=opencoord_netcdf(filename->name,NULL,NULL,filename->var,nc_config,isout);
     if(coord==NULL)
     {
       if(isout)
@@ -79,6 +80,7 @@ int getnsoilcode(const Filename *filename, /**< filename of soil code file */
         fputs("ERROR165: Cannot get number of cells from soil code file.\n",stderr);
       return -1;
     }
+    fclose(file);
     return header.ncell; 
   }
   else /* file is in CLM/CLM2 format */

@@ -132,16 +132,18 @@ Bool fscanpft_crop(LPJfile *file,  /**< pointer to LPJ file */
   pft->fwrite=fwrite_crop;
   pft->fprint=fprint_crop;
   pft->fread=fread_crop;
+  pft->copy=copy_crop;
   pft->litter_update=litter_update_crop;
   pft->actual_lai=actual_lai_crop;
   pft->fpar=fpar_crop;
   pft->alphaa_manage=alphaa_crop;
   pft->free=free_crop;
+  pft->leafc=leafc_crop;
   pft->vegc_sum=vegc_sum_crop;
   pft->vegn_sum=vegn_sum_crop;
   pft->wdf=wdf_crop;
   pft->fprintpar=fprintpar_crop;
-  pft->livefuel_consumption=NULL;
+  pft->livefuel_consumption=livefuel_consum_crop;
   pft->annual=NULL;
   pft->turnover_daily=NULL;
   pft->albedo_pft=albedo_crop;
@@ -149,6 +151,7 @@ Bool fscanpft_crop(LPJfile *file,  /**< pointer to LPJ file */
   pft->nuptake=nuptake_crop;
   pft->ndemand=ndemand_crop;
   pft->vmaxlimit=vmaxlimit_crop;
+  pft->getb=getb_crop;
   crop=new(Pftcroppar);
   if(crop==NULL)
   {
@@ -247,10 +250,7 @@ Bool fscanpft_crop(LPJfile *file,  /**< pointer to LPJ file */
   fscanpftreal(verb,file,&crop->shapesenescencenorm,pft->name,
                "shapesenescencenorm");
   fscancropphys2(verb,file,&crop->nc_ratio,pft->name,"cn_ratio");
-  if(config->with_nitrogen)
-  {
-    fscancropratio2(verb,file,&crop->ratio,pft->name,"ratio");
-  }
+  fscancropratio2(verb,file,&crop->ratio,pft->name,"ratio");
   crop->nc_ratio.root=1/crop->nc_ratio.root;
   crop->nc_ratio.so=1/crop->nc_ratio.so;
   crop->nc_ratio.pool=1/crop->nc_ratio.pool;

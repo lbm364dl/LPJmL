@@ -16,7 +16,7 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 #ifdef USE_UDUNITS
 #include <udunits.h>
@@ -46,7 +46,7 @@ struct input_netcdf
   } missing_value;
 };
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 static Bool checkinput(const size_t *offsets,const Coord *coord,const Input_netcdf file)
 {
   String line;
@@ -101,7 +101,7 @@ Input_netcdf dupinput_netcdf(const Input_netcdf input)
   return copy;
 } /* of 'dupinput_netcdf' */
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
                                const char *units,const Config *config)
 {
@@ -126,7 +126,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
     for(i=0;i<nvars;i++)
     {
       nc_inq_varname(input->ncid,i,name);
-      if(strcmp(name,LON_NAME) && strcmp(name,LON_STANDARD_NAME) && strcmp(name,LAT_NAME) && strcmp(name,LAT_STANDARD_NAME) && strcmp(name,TIME_NAME))
+      if(strcmp(name,config->netcdf.lon.name) && strcmp(name,config->netcdf.lon.standard_name) && strcmp(name,config->netcdf.lat.name) && strcmp(name,config->netcdf.lat.standard_name) && strcmp(name,config->netcdf.time.name))
       {
         nc_inq_varndims(input->ncid,i,&ndims);
         if(ndims>1)
@@ -184,7 +184,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
         rc=nc_get_att_short(input->ncid,input->varid,"_FillValue",
                             &input->missing_value.s);
         if(rc)
-          input->missing_value.s=MISSING_VALUE_SHORT;
+          input->missing_value.s=config->netcdf.missing_value.s;
       }
       input->type=LPJ_SHORT;
       break;
@@ -196,7 +196,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
         rc=nc_get_att_int(input->ncid,input->varid,"_FillValue",
                           &input->missing_value.i);
         if(rc)
-          input->missing_value.i=MISSING_VALUE_INT;
+          input->missing_value.i=config->netcdf.missing_value.i;
       }
       input->type=LPJ_INT;
       break;
@@ -208,7 +208,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
         rc=nc_get_att_double(input->ncid,input->varid,"_FillValue",
                              &input->missing_value.d);
         if(rc)
-          input->missing_value.d=config->missing_value;
+          input->missing_value.d=config->netcdf.missing_value.f;
       }
       input->type=LPJ_DOUBLE;
       break;
@@ -220,7 +220,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
         rc=nc_get_att_float(input->ncid,input->varid,"_FillValue",
                             &input->missing_value.f);
         if(rc)
-          input->missing_value.f=config->missing_value;
+          input->missing_value.f=config->netcdf.missing_value.f;
       }
       input->type=LPJ_FLOAT;
       break;
@@ -232,7 +232,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
         rc=nc_get_att_uchar(input->ncid,input->varid,"_FillValue",
                             &input->missing_value.b);
         if(rc)
-          input->missing_value.b=MISSING_VALUE_BYTE;
+          input->missing_value.b=config->netcdf.missing_value.b;
       }
       input->type=LPJ_BYTE;
       break;
@@ -303,7 +303,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
         nc_get_att_text(input->ncid,input->varid,"units",fromstr);
         fromstr[len]='\0';
       }
-      if(!strcmp(fromstr,"-"))
+      if(!strcmp(fromstr,"-") || !strcmp(fromstr,units))
       {
         input->slope=1;
         input->intercept=0;
@@ -342,7 +342,7 @@ Input_netcdf openinput_netcdf(const Filename *filename, /**< filename */
                               const Config *config  /**< LPJ configuration */
                              )                      /** \return NULL on error */
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   Input_netcdf input;
   int rc,var_id,*dimids,ndims,index;
   char name[NC_MAX_NAME+1];
@@ -523,7 +523,7 @@ Input_netcdf openinput_netcdf(const Filename *filename, /**< filename */
 
 void closeinput_netcdf(Input_netcdf input)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   if(input!=NULL)
   {
     nc_close(input->ncid);
@@ -560,7 +560,7 @@ size_t getindexsize_netcdf(const Input_netcdf input)
 Bool readinput_netcdf(const Input_netcdf input,Real *data,
                       const Coord *coord)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#if defined(USE_NETCDF)
   int rc;
   float *f;
   double *d;
@@ -608,7 +608,7 @@ Bool readinput_netcdf(const Input_netcdf input,Real *data,
       }
       for(i=0;i<input->var_len;i++)
       {
-        if(f[i]==input->missing_value.f)
+        if(ismissingvalue(f[i],input->missing_value.f))
         {
           fprintf(stderr,"ERROR423: Missing value for cell (%s).\n",
                   sprintcoord(line,coord));
@@ -638,7 +638,7 @@ Bool readinput_netcdf(const Input_netcdf input,Real *data,
       }
       for(i=0;i<input->var_len;i++)
       {
-        if(d[i]==input->missing_value.d)
+        if(ismissingvalue(d[i],input->missing_value.d))
         {
           fprintf(stderr,"ERROR423: Missing value for cell (%s).\n",
                   sprintcoord(line,coord));
@@ -715,7 +715,7 @@ Bool readinput_netcdf(const Input_netcdf input,Real *data,
 Bool readintinput_netcdf(const Input_netcdf input,int *data,
                          const Coord *coord,Bool *ismissing)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int rc,index;
   short *s;
   float *f;
@@ -790,7 +790,7 @@ Bool readintinput_netcdf(const Input_netcdf input,int *data,
       }
       for(i=0;i<input->var_len;i++)
       {
-        if(f[i]==input->missing_value.f)
+        if(ismissingvalue(f[i],input->missing_value.f))
           *ismissing=TRUE;
         data[i]=(int)f[i];
       }
@@ -809,7 +809,7 @@ Bool readintinput_netcdf(const Input_netcdf input,int *data,
 Bool readshortinput_netcdf(const Input_netcdf input,short *data,
                            const Coord *coord)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int rc,index;
   size_t i;
   size_t offsets[3];

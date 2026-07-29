@@ -30,9 +30,9 @@ int delpft(Pftlist *pftlist, /**< PFT list */
 {
 #ifdef SAFE
   if(isempty(pftlist))
-    fail(IS_EMPTY_ERR,TRUE,"PFT list is empty in delpft()");
+    fail(IS_EMPTY_ERR,TRUE,TRUE,"PFT list is empty in delpft()");
   if(index<0 || index>=pftlist->n)
-    fail(OUT_OF_RANGE_ERR,TRUE,"index=%d out of range in delpft()",index);
+    fail(OUT_OF_RANGE_ERR,TRUE,TRUE,"index=%d out of range in delpft()",index);
 #endif
   freepft(pftlist->pft+index);
   pftlist->n--;
@@ -49,48 +49,44 @@ int delpft(Pftlist *pftlist, /**< PFT list */
   return pftlist->n;
 } /* of 'delpft ' */
 
-int fwritepftlist(FILE *file,            /**< file pointer of binary file */
+int fwritepftlist(Bstruct file,          /**< pointer to restart file */
+                  const char *name,      /**< name of object */
                   const Pftlist *pftlist /**< PFT list */
                  )                       /** \return number of PFTs written */
 {
-  Byte b;
   int p;
-  /* write number of established PFTs */
-  b=(Byte)pftlist->n;
-  fwrite(&b,sizeof(b),1,file);
+  bstruct_writebeginarray(file,name,pftlist->n);
   for(p=0;p<pftlist->n;p++)
     if(fwritepft(file,pftlist->pft+p)) /* write PFT-specific data */
       break;
+  bstruct_writeendarray(file);
   return p;
 } /* of 'fwritepftlist' */
 
-void fprintpftlist(FILE *file,             /**< pointer of text file */
-                   const Pftlist *pftlist, /**< PFT list */
-                   int with_nitrogen       /**< nitrogen cycle enabled */
+void fprintpftlist(FILE *file,            /**< pointer of text file */
+                   const Pftlist *pftlist /**< PFT list */
                   )
 {
   int p;
   /* Write data of all Pfts in list in a human readable form */
   fprintf(file,"Number of PFTs: %d\n",pftlist->n);
   for(p=0;p<pftlist->n;p++)
-    fprintpft(file,pftlist->pft+p,with_nitrogen);
+    fprintpft(file,pftlist->pft+p);
 } /* of 'fprintpftlist' */
 
-Bool freadpftlist(FILE *file,            /**< file pointer of a binary file */
+Bool freadpftlist(Bstruct file,          /**< pointer to restart file */
+                  const char *name,      /**< name of object */
                   Stand *stand,          /**< Stand pointer */
                   Pftlist *pftlist,      /**< PFT list */
                   const Pftpar pftpar[], /**< PFT parameter array */
                   int ntotpft,           /**< total number of PFTs */
-                  Bool separate_harvests,
-                  Bool swap              /**< if true data is in different byte order */
+                  Bool separate_harvests
                  )                       /** \return TRUE on error */
 {
-  Byte b;
   int p;
   /* read number of established PFTs */
-  if(fread(&b,sizeof(b),1,file)!=1)
+  if(bstruct_readbeginarray(file,name,&pftlist->n))
     return TRUE;
-  pftlist->n=b;
   if(pftlist->n)
   {
     /* allocate memory for PFT array */
@@ -102,16 +98,16 @@ Bool freadpftlist(FILE *file,            /**< file pointer of a binary file */
       return TRUE;
     }
     for(p=0;p<pftlist->n;p++)
-      if(freadpft(file,stand,pftlist->pft+p,pftpar,ntotpft,separate_harvests,swap))
+      if(freadpft(file,stand,pftlist->pft+p,pftpar,ntotpft,separate_harvests))
       {
-        fprintf(stderr,"ERROR254: Cannot read PFT %d.\n",p);
+        fprintf(stderr,"ERROR254: Cannot read PFT item %d of %s.\n",p,name);
         pftlist->n=p;
         return TRUE;
       }
   }
   else
     pftlist->pft=NULL;
-  return FALSE;
+  return bstruct_readendarray(file,name);
 } /* of 'freadpftlist' */
 
 void freepftlist(Pftlist *pftlist /**< PFT list */

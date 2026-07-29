@@ -18,8 +18,8 @@
 #include "lpj.h"
 
 #define checkptr(ptr) if(ptr==NULL) { printallocerr(#ptr); return TRUE;}
-#define fscanint2(file,var,name) if(fscanint(file,var,name,FALSE,verbosity)) return TRUE;
-#define fscanbool2(file,var,name) if(fscanbool(file,var,name,FALSE,verbosity)) return TRUE;
+#define fscanint2(file,var,name) if(fscanint(file,var,name,FALSE,verbosity)) { free(default_suffix); return TRUE;}
+#define fscanbool2(file,var,name) if(fscanbool(file,var,name,FALSE,verbosity)) { free(default_suffix);return TRUE;}
 
 static Bool isopenoutput(int id,const Outputvar output[],int n)
 {
@@ -86,6 +86,7 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
   checkptr(config->outputvars);
   count=index=0;
   config->withdailyoutput=FALSE;
+  config->compress=0;
   size=nout_max;
   config->json_filename=NULL;
   if(iskeydefined(file,"outpath") && !isnull(file,"outpath"))
@@ -111,9 +112,9 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
         if(verbosity)
           fprintf(stderr,"ERROR262: Filename of processed JSON file '%s' is identical to configuration filename, no file written.\n",
                   config->json_filename);
+        free(config->json_filename);
         if(config->pedantic)
           return TRUE;
-        free(config->json_filename);
         config->json_filename=NULL;
       }
     }
@@ -145,54 +146,112 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
   if(iskeydefined(file,"output_version"))
   {
     if(fscanint(file,&version,"output_version",FALSE,verbosity))
+    {
+      free(default_suffix);
       return TRUE;
+    }
     if(version<1 || version>CLM_MAX_VERSION)
     {
       if(verbosity)
         fprintf(stderr,"ERROR229: Invalid version %d, must be in [1,%d].\n",
                 version,CLM_MAX_VERSION);
+      free(default_suffix);
       return TRUE;
     }
   }
+  config->isnetcdf4=FALSE;
+#ifdef USE_NETCDF
   fscanbool2(file,&config->nofill,"nofill");
-  config->global_netcdf=FALSE;
-  if(iskeydefined(file,"global_netcdf"))
+  config->isnetcdf4=FALSE;
+  if(fscanbool(file,&config->isnetcdf4,"netcdf4",!config->pedantic,verbosity))
   {
-    if(fscanbool(file,&config->global_netcdf,"global_netcdf",FALSE,verbosity))
-      return TRUE;
-  }
-  config->flush_output=FALSE;
-  if(fscanbool(file,&config->flush_output,"flush_output",!config->pedantic,verbosity))
+    free(default_suffix);
     return TRUE;
+  }
+  if(fscanint(file,&config->compress,"compress",!config->pedantic,verbosity))
+  {
+    free(default_suffix);
+    return TRUE;
+  }
+  if(config->compress<0 || config->compress>9)
+  {
+    if(verbosity)
+      fprintf(stderr,"ERROR438: Invalid compression value %d, must be in [0,9].\n",
+              config->compress);
+    free(default_suffix);
+    return TRUE;
+  }
+  if(!config->isnetcdf4 && config->compress)
+  {
+    if(verbosity)
+      fputs("WARNING403: Compression of NetCDF files is not supported if \"netcdf4\" is not set to true.\n",stderr);
+    if(config->pedantic)
+    {
+      free(default_suffix);
+      return TRUE;
+    }
+  }
+  config->global_netcdf=FALSE;
+  if(fscanbool(file,&config->global_netcdf,"global_netcdf",!config->pedantic,verbosity))
+  {
+    free(default_suffix);
+    return TRUE;
+  }
   config->rev_lat=FALSE;
   if(fscanbool(file,&config->rev_lat,"rev_lat",!config->pedantic,verbosity))
+  {
+    free(default_suffix);
     return TRUE;
+  }
   config->with_days=TRUE;
   if(fscanbool(file,&config->with_days,"with_days",!config->pedantic,verbosity))
+  {
+    free(default_suffix);
     return TRUE;
+  }
+  config->absyear=FALSE;
+  if(!config->with_days)
+  {
+    if(fscanbool(file,&config->absyear,"absyear",!config->pedantic,verbosity))
+    {
+      free(default_suffix);
+      return TRUE;
+    }
+  }
+#endif
+  config->flush_output=FALSE;
+  if(fscanbool(file,&config->flush_output,"flush_output",!config->pedantic,verbosity))
+  {
+    free(default_suffix);
+    return TRUE;
+  }
   config->grid_type=LPJ_SHORT;
   if(iskeydefined(file,"float_grid"))
   {
     if(fscanbool(file,&b,"float_grid",FALSE,verbosity))
+    {
+      free(default_suffix);
       return TRUE;
+    }
     if(b)
       config->grid_type=LPJ_FLOAT;
   }
   if(iskeydefined(file,"grid_type"))
   {
-    if(fscankeywords(file,(int *)&config->grid_type,"grid_type",typenames,5,FALSE,verbosity))
+    if(fscankeywords(file,(int *)&config->grid_type,"grid_type",typenames,N_TYPES,FALSE,verbosity))
+    {
+      free(default_suffix);
       return TRUE;
+    }
     if(config->grid_type==LPJ_BYTE || config->grid_type==LPJ_INT)
     {
       if(verbosity)
         fprintf(stderr,"ERROR229: Invalid datatype %s for grid, must be short, float or double.\n",
                 typenames[config->grid_type]);
+      free(default_suffix);
       return TRUE;
     }
   }
-  config->absyear=FALSE;
-  if(fscanbool(file,&config->absyear,"absyear",!config->pedantic,verbosity))
-    return TRUE;
   if(iskeydefined(file,"grid_scaled"))
   {
     fscanbool2(file,&config->pft_output_scaled,"grid_scaled");
@@ -203,9 +262,17 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
   }
   name=fscanstring(file,NULL,"json_suffix",verbosity);
   if(name==NULL)
+  {
+    free(default_suffix);
     return TRUE;
+  }
   config->json_suffix=strdup(name);
-  checkptr(config->json_suffix);
+  if(config->json_suffix==NULL)
+  {
+    printallocerr("json_suffix");
+    free(default_suffix);
+    return TRUE;
+  }
   for(index=0;index<size;index++)
   {
     item=fscanarrayindex(arr,index);
@@ -218,7 +285,10 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
         if(verbosity)
           fprintf(stderr,"ERROR166: Id '%s' not defined for output file, output is ignored.\n",name);
         if(config->pedantic)
+        {
+          free(default_suffix);
           return TRUE;
+        }
         continue;
       }
     }
@@ -239,6 +309,7 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
       if(verbosity)
         fprintf(stderr,"ERROR231: Cannot read filename for output '%s'.\n",
                 config->outnames[flag].name);
+      free(default_suffix);
       return TRUE;
     }
     if(strlen(default_suffix)>0 && !hasanysuffix(config->outputvars[count].filename.name))
@@ -252,9 +323,12 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
       if(verbosity)
         fprintf(stderr,"WARNING006: Output file for '%s' is opened twice, will be ignored.\n",
                 config->outnames[flag].name);
-      if(config->pedantic)
-        return TRUE;
       freefilename(&config->outputvars[count].filename);
+      if(config->pedantic)
+      {
+        free(default_suffix);
+        return TRUE;
+      }
     }
     else if(outputsize(flag,npft,ncft,config)==0)
     {
@@ -262,31 +336,47 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
         fprintf(stderr,"WARNING006: Number of bands in output file for '%s' is zero, will be ignored.\n",
                 config->outnames[flag].name);
       freefilename(&config->outputvars[count].filename);
+      if(config->pedantic)
+      {
+        free(default_suffix);
+        return TRUE;
+      }
     }
-    else if(!config->with_nitrogen && isnitrogen_output(flag))
+    else if(!config->with_methane && ismethane_output(flag))
     {
       if(verbosity)
-        fprintf(stderr,"WARNING006: Output file for '%s' is nitrogen output but nitrogen is not enabled, will be ignored.\n",
+        fprintf(stderr,"WARNING006: Output file for '%s' is methane output but methane is not enabled, will be ignored.\n",
                 config->outnames[flag].name);
       freefilename(&config->outputvars[count].filename);
+      if(config->pedantic)
+      {
+        free(default_suffix);
+        return TRUE;
+      }
     }
     else if(config->outputvars[count].filename.fmt==CLM2)
     {
       if(verbosity)
         fprintf(stderr,"ERROR223: File format \"clm2\" is not supported for output file '%s', will be ignored.\n",
                 config->outputvars[count].filename.name);
-      if(config->pedantic)
-        return TRUE;
       freefilename(&config->outputvars[count].filename);
+      if(config->pedantic)
+      {
+        free(default_suffix);
+        return TRUE;
+      }
     }
     else if(config->outputvars[count].filename.fmt==META)
     {
       if(verbosity)
         fprintf(stderr,"ERROR223: File format \"meta\" is not supported for output file '%s', will be ignored.\n",
                 config->outputvars[count].filename.name);
-      if(config->pedantic)
-        return TRUE;
       freefilename(&config->outputvars[count].filename);
+      if(config->pedantic)
+      {
+        free(default_suffix);
+        return TRUE;
+      }
     }
     else
     {
@@ -296,6 +386,15 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
         if(verbosity)
           fprintf(stderr,"ERROR224: Invalid format '%s' for 'globalflux' output, only 'txt' allowed.\n",
                   fmt[config->outputvars[count].filename.fmt]);
+        free(default_suffix);
+        return TRUE;
+      }
+      else if ((flag==PCO2 || flag==PCH4) && config->outputvars[count].filename.fmt==CDF)
+      {
+        if(verbosity)
+          fprintf(stderr,"ERROR224: Format 'cdf' not allowed for '%s' output.\n",
+                  config->outnames[flag].name);
+        free(default_suffix);
         return TRUE;
       }
       if(config->outputvars[count].filename.issocket)
@@ -316,7 +415,10 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
                     config->outnames[flag].name,
                     sprinttimestep(s2,getmintimestep(flag)));
           if(config->pedantic)
+          {
+            free(default_suffix);
             return TRUE;
+          }
         }
         else if(config->outputvars[count].filename.timestep!=ANNUAL && isannual_output(flag))
         {
@@ -324,7 +426,10 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
             fprintf(stderr,"ERROR246: Only annual time step allowed for '%s' output, time step is %s.\n",
                     config->outnames[flag].name,sprinttimestep(s2,config->outputvars[count].filename.timestep));
           if(config->pedantic)
+          {
+            free(default_suffix);
             return TRUE;
+          }
         }
         config->outnames[flag].timestep=config->outputvars[count].filename.timestep;
       }
@@ -348,6 +453,16 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
             config->outnames[flag].time=MISSING_TIME;
         }
       }
+#ifndef USE_NETCDF
+      if(config->outputvars[count].filename.fmt==CDF)
+      {
+        if(verbosity)
+          fprintf(stderr,"ERROR401: NetCDF output '%s' is not supported by this version of LPJmL.\n",
+                  config->outputvars[count].filename.name);
+        free(default_suffix);
+        return TRUE;
+      }
+#endif
       if(config->outputvars[count].filename.isscale)
         config->outnames[flag].scale=(float)config->outputvars[count].filename.scale;
       if(config->outputvars[count].filename.fmt!=SOCK)
@@ -359,14 +474,20 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
             fprintf(stderr,"ERROR224: Invalid format specifier in filename '%s'.\n",
                     config->outputvars[count].filename.name);
           if(config->pedantic)
+          {
+            free(default_suffix);
             return TRUE;
+          }
         }
         else if(config->outputvars[count].oneyear && getnyear(config->outnames,flag)==0)
         {
           if(verbosity)
             fprintf(stderr,"ERROR225: One year output not allowed for grid, globalflux, country or region.\n");
           if(config->pedantic)
+          {
+            free(default_suffix);
             return TRUE;
+          }
         }
       }
       else
@@ -378,5 +499,7 @@ Bool fscanoutput(LPJfile *file,  /**< pointer to LPJ file */
   }
   free(default_suffix);
   config->n_out=count;
+  if(checkuniqoutput(npft,ncft,config))
+    return TRUE;
   return FALSE;
 } /* of 'fscanoutput' */

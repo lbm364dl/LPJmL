@@ -24,12 +24,12 @@ static char *coupled_model;
 
 static void handler(int UNUSED(num))
 {
-  fail(SOCKET_ERR,FALSE,"Channel to %s is broken",coupled_model);
+  fail(SOCKET_ERR,TRUE,FALSE,"Channel to %s is broken",coupled_model);
 } /* of 'handler' */
 
 static void alarmhandler(int UNUSED(num))
 {
-  fail(OPEN_COUPLER_ERR,FALSE,"Timeout in connection to %s",coupled_model);
+  fail(OPEN_COUPLER_ERR,TRUE,FALSE,"Timeout in connection to %s",coupled_model);
 } /* of 'alarmhandler' */
 
 Bool open_coupler(Config *config /**< LPJmL configuration */
@@ -52,7 +52,7 @@ Bool open_coupler(Config *config /**< LPJmL configuration */
       alarm(config->wait);
 #endif
     }
-    config->socket=connecttdt_socket(config->coupled_host,config->coupler_port);
+    config->socket=connecttdt_socket(config->coupled_host,config->coupled_port);
 #ifndef _WIN32
     if(config->wait)
     {

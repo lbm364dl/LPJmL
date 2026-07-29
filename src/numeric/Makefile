@@ -16,16 +16,19 @@
 include ../../Makefile.inc
 
 OBJS    = leftmostzero.$O bisect.$O linreg.$O date.$O interpolate.$O\
-          buffer.$O rand.$O petpar.$O\
-          ivec_sum.$O int2date.$O petpar2.$O\
-          petpar3.$O permute.$O setseed.$O freadseed.$O
+          buffer.$O rand.$O petpar.$O interpolate_data.$O\
+          ivec_sum.$O int2date.$O itersolve.$O\
+          gammafunc.$O interpolate_data.$O\
+          permute.$O setseed.$O freadseed.$O runmean_add.$O\
+          finite_volume_diffusion.$O thomas_algorithm.$O\
+          fwriteseed.$O getavg.$O getmax.$O getrh.$O
 
 INC     = ../../include
 LIBDIR  = ../../lib
 LIB     = libnum.$A
 
-HDRS    = $(INC)/types.h $(INC)/numeric.h $(INC)/date.h\
-          $(INC)/list.h $(INC)/buffer.h $(INC)/errmsg.h 
+HDRS    = $(INC)/types.h $(INC)/numeric.h $(INC)/date.h $(INC)/hash.h\
+          $(INC)/list.h $(INC)/buffer.h $(INC)/errmsg.h $(INC)/bstruct.h
 
 $(LIBDIR)/$(LIB): $(OBJS)
 	$(AR) $(ARFLAGS)$(LIBDIR)/$(LIB) $(OBJS)

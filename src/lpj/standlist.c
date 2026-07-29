@@ -16,25 +16,25 @@
 
 #include "lpj.h"
 
-int fwritestandlist(FILE *file,                /**< pointer to binary file */
-                    const Standlist standlist, /**< stand list */
-                    int ntotpft                /**< total number of PFTs */
-                   ) /** \return number of stands written */
+Bool fwritestandlist(Bstruct file,              /**< pointer to restart file */
+                     const char *key,           /**< name of object */
+                     const Standlist standlist, /**< stand list */
+                     int ntotpft                /**< total number of PFTs */
+                    ) /** \return TRUE on error */
 {
   const Stand *stand;
   int s;
-  fwrite(&standlist->n,sizeof(int),1,file);
+  bstruct_writebeginarray(file,key,standlist->n);
   foreachstand(stand,s,standlist)
-    if(fwritestand(file,stand,ntotpft))
-      return s;
-  return s;
+    if(fwritestand(file,NULL,stand,ntotpft))
+      return TRUE;
+  return bstruct_writeendarray(file);
 } /* of 'fwritestandlist' */
 
 void fprintstandlist(FILE *file,                /**< Pointer to text file */
                      const Standlist standlist, /**< Stand list */
                      const Pftpar *pftpar,      /**< PFT parameter array */
-                     int ntotpft,               /**< total number of PFTs */
-                     int with_nitrogen          /**< nitrogen cycle enabled */
+                     int ntotpft                /**< total number of PFTs */
                     )
 {
   const Stand *stand;
@@ -43,27 +43,27 @@ void fprintstandlist(FILE *file,                /**< Pointer to text file */
   foreachstand(stand,s,standlist)
   {
     fprintf(file,"Stand:\t\t%d\n",s);
-    fprintstand(file,stand,pftpar,ntotpft,with_nitrogen);
+    fprintstand(file,stand,pftpar,ntotpft);
   }
 } /* of 'fprintstandlist' */
 
-Standlist freadstandlist(FILE *file,            /**< File pointer to binary file */
+Standlist freadstandlist(Bstruct file,          /**< pointer to restart file */
+                         const char *name,      /**< name of object */
                          Cell *cell,            /**< Cell pointer */
                          const Pftpar pftpar[], /**< pft parameter array */
                          int ntotpft,           /**< total number of PFTs */
                          const Soilpar *soilpar,/**< soil parameter */
-                         const Standtype standtype[],
+                         Standtype **standtype, /**< array of stand types */
                          int nstand,            /**< number of stand types */
-                         Bool separate_harvests,
-                         Bool swap              /**< Byte order has to be changed */
+                         Bool separate_harvests /**< separate harvests enabled (TRUE/FALSE) */
                         ) /** \return allocated stand list or NULL */
 {
   /* Function reads stand list from file */
   int s,n;
   Standlist standlist;
-  /* Read number of stands */
-  if(freadint1(&n,swap,file)!=1)
+  if(bstruct_readbeginarray(file,name,&n))
     return NULL;
+  /* Read number of stands */
   standlist=newlist(n);
   if(standlist==NULL)
   {
@@ -72,12 +72,16 @@ Standlist freadstandlist(FILE *file,            /**< File pointer to binary file
   }
   /* Read all stand data */
   for(s=0;s<standlist->n;s++)
-    if((getlistitem(standlist,s)=freadstand(file,cell,pftpar,ntotpft,soilpar,
-                                            standtype,nstand,separate_harvests,swap))==NULL)
+    if((getlistitem(standlist,s)=freadstand(file,NULL,cell,pftpar,ntotpft,soilpar,
+                                            standtype,nstand,separate_harvests))==NULL)
     {
-      fprintf(stderr,"ERROR254: Cannot read stand %d.\n",s);
+      fprintf(stderr,"ERROR254: Cannot read stand item %d of %s.\n",s,name);
       return NULL;
     }
+  if(bstruct_readendarray(file,name))
+  {
+    return NULL;
+  }
   return standlist;
 } /* of 'freadstandlist' */
 
@@ -96,6 +100,13 @@ int addstand(const Standtype *type, /**< stand type */
    stand->type=type;
    /* call stand-specific allocation function */
    initstand(stand);
+   if(stand->type->dailyfire!=NULL && stand->type->max_ndayfire>0)
+   {
+     stand->fires=newqueue(sizeof(Fire)/sizeof(Real),stand->type->max_ndayfire);
+     check(stand->fires);
+   }
+   else
+     stand->fires=NULL;
    stand->type->newstand(stand);
    return getlistlen(cell->standlist);
 } /* of 'addstand' */
@@ -106,7 +117,9 @@ void initstand(Stand *stand /**< Pointer to stand */
   /* Function initializes stand */
   stand->fire_sum=0.0;
   stand->growing_days=0;
+  stand->Hag_Beta=stand->cell->Hag_beta;
   stand->prescribe_landcover=NO_LANDCOVER;
+  stand->afire_frac=0;
 } /* of 'initstand' */
 
 void freestand(Stand *stand /**< Pointer to stand */
@@ -114,11 +127,12 @@ void freestand(Stand *stand /**< Pointer to stand */
 {
   freepftlist(&stand->pftlist); /* free list of established PFTs */
   freesoil(&stand->soil);
+  freequeue(stand->fires);
   /* call stand-specific free function */
   stand->type->freestand(stand);
   free(stand);
 } /* of 'freestand'  */
- 
+
 int delstand(Standlist list, /**< stand list */
              int index       /**< index of stand to be deleted */
             )                /** \return new number of stands */
@@ -139,3 +153,15 @@ void freestandlist(Standlist standlist /**< stand list */
     freestand(stand);
   freelist(standlist);
 } /* of 'freestandlist' */
+
+Real standfracsum(const Standlist standlist /**< stand list */
+                 )                          /** \return sum of all stand fractions */
+{
+  Stand *stand;
+  Real frac_sum=0.0;
+  int s;
+  foreachstand(stand,s,standlist)
+    frac_sum+=stand->frac;
+  return frac_sum;
+} /* of 'standfracsum' */
+

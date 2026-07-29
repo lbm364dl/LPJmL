@@ -16,13 +16,13 @@
 
 #include "lpj.h"
 
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 #endif
 
 Bool write_float_netcdf(const Netcdf *cdf,const float vec[],int year,int size)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
   int i,rc;
   size_t offsets[3],counts[3];
   float *grid;
@@ -33,7 +33,7 @@ Bool write_float_netcdf(const Netcdf *cdf,const float vec[],int year,int size)
     return TRUE;
   }
   for(i=0;i<cdf->index->nlon*cdf->index->nlat;i++)
-    grid[i]=cdf->missing_value;
+    grid[i]=cdf->missing_value.f;
   for(i=0;i<size;i++)
     grid[cdf->index->index[i]]=vec[i];
   if(year==NO_TIME)

@@ -13,19 +13,19 @@
 /**************************************************************************************/
 
 #include "lpj.h"
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
+#ifdef USE_NETCDF
 #include <netcdf.h>
 #include <time.h>
 #endif
 #define error(rc) if(rc) {fprintf(stderr,"ERROR427: Cannot write '%s': %s.\n",argv[iarg+3],nc_strerror(rc)); nc_close(ncid);return EXIT_FAILURE;}
 
-#define USAGE "Usage: %s [-var name] soilcode.nc grid.clm drainage.clm drainage.nc\n"
+#define USAGE "Usage: %s [-var name] [-config file] [-compress level] [-netcdf4] soilcode.nc grid.clm drainage.clm drainage.nc\n"
+#define INDEX_LONG_NAME "index of cell into/from which water flows (ilat*nlon+ilon)"
 
 int main(int argc,char **argv)
 {
-#if defined(USE_NETCDF) || defined(USE_NETCDF4)
-  char *var;
-  var=NULL;
+#ifdef USE_NETCDF
+  char *var=NULL;
   const double *lon,*lat;
   int *index;
   Coord *grid_soil,*grid;
@@ -35,23 +35,27 @@ int main(int argc,char **argv)
   Coord resolution;
   Filename name;
   Header header;
-  Bool swap;
+  Bool swap,isnetcdf4;
+  Netcdf_config nc_config;
   int iarg,i,n,nlon,nlat,j,offset[2]={0,0};
   int ncid,rc,lat_dim_id,lon_dim_id,lon_var_id,lat_var_id;
   int dim[2];
   int index_varid,len_varid;
-  int miss=-9999;
   int data[2];
-  int version;
+  int version,compress;
   int src_cell,dst_cell;
   int *out;
-  int s_len;
-  char *s;
+  char *s,*endptr;
+  char *config_filename;
   time_t t;
   char *cmdline;
-  float *len=NULL,fmiss,glon,glat;
+  float *len=NULL,glon,glat;
   unsigned int soilcode;
   String headername,line;
+  config_filename=NULL;
+  initsetting_netcdf(&nc_config);
+  compress=0;
+  isnetcdf4=FALSE;
   for(iarg=1;iarg<argc;iarg++)
     if(argv[iarg][0]=='-')
     {
@@ -64,6 +68,39 @@ int main(int argc,char **argv)
           return EXIT_FAILURE;
         }
         var=argv[++iarg];
+      }
+      else if(!strcmp(argv[iarg],"-config"))
+      {
+        if(argc==iarg+1)
+        {
+          fprintf(stderr,"Error: Missing argument after option '-config'.\n"
+                  USAGE,argv[0]);
+          return EXIT_FAILURE;
+        }
+        config_filename=argv[++iarg];
+      }
+      else if(!strcmp(argv[iarg],"-netcdf4"))
+        isnetcdf4=TRUE;
+      else if(!strcmp(argv[iarg],"-compress"))
+      {
+        if(argc==iarg+1)
+        {
+          fprintf(stderr,"Error: Missing argument after option '-compress'.\n"
+                  USAGE,argv[0]);
+          return EXIT_FAILURE;
+        }
+        compress=strtol(argv[++iarg],&endptr,10);
+        if(*endptr!='\0')
+        {
+          fprintf(stderr,"Error: Invalid number '%s' for option '-compress'.\n",argv[iarg]);
+          return EXIT_FAILURE;
+        }
+        if(compress<0 || compress>9)
+        {
+          fprintf(stderr,"Error: Invalid compression value %d, must be in [0,9].\n",
+                  compress);
+          return EXIT_FAILURE;
+        }
       }
       else
       {
@@ -79,8 +116,16 @@ int main(int argc,char **argv)
     fprintf(stderr,"Error: Missing argument(s).\n"
             USAGE,argv[0]);
     return EXIT_FAILURE;
-  } 
-  soil=opencoord_netcdf(argv[iarg],var,TRUE);
+  }
+  if(config_filename!=NULL)
+  {
+    if(parse_config_netcdf(&nc_config,config_filename))
+    {
+      fprintf(stderr,"Error reading NetCDF configuration file `%s`.\n",config_filename);
+      return EXIT_FAILURE;
+    }
+  }
+  soil=opencoord_netcdf(argv[iarg],NULL,NULL,var,&nc_config,TRUE);
   if(soil==NULL)
     return EXIT_FAILURE;
   getresolution_netcdf(soil,&resolution);
@@ -152,7 +197,7 @@ int main(int argc,char **argv)
     }
   }
   closecoord(gridfile);
-  file=fopen(argv[iarg+2],"rb"); 
+  file=fopen(argv[iarg+2],"rb");
   if(file==NULL)
   {
     printfopenerr(argv[iarg+2]);
@@ -181,13 +226,16 @@ int main(int argc,char **argv)
     fprintf(stderr,"Number of bands=%d in '%s' must be 1 or 2.\n",
             header.nbands,argv[iarg+2]);
     return EXIT_FAILURE;
-  } 
-  
-#ifdef USE_NETCDF4
-  rc=nc_create(argv[iarg+3],NC_CLOBBER|NC_NETCDF4,&ncid);
-#else
-  rc=nc_create(argv[iarg+3],NC_CLOBBER,&ncid);
-#endif
+  }
+  if(version>2 && header.datatype!=LPJ_INT)
+  {
+    fprintf(stderr,"Datatype of file '%s' is %s, must be int.\n",argv[iarg+2],typenames[header.datatype]);
+    return EXIT_FAILURE;
+  }
+  if(isnetcdf4)
+    rc=nc_create(argv[iarg+3],(compress) ? NC_CLOBBER|NC_NETCDF4 : NC_CLOBBER,&ncid);
+  else
+    rc=nc_create(argv[iarg+3],NC_CLOBBER,&ncid);
   if(rc)
   {
     fprintf(stderr,"ERROR426: Cannot create file '%s': %s.\n",
@@ -196,36 +244,35 @@ int main(int argc,char **argv)
   }
   time(&t);
   cmdline=catstrvec(argv,argc);
-  s_len=snprintf(NULL,0,"%s: %s",strdate(&t),cmdline);
-  s=malloc(s_len+1);
-  sprintf(s,"%s: %s",strdate(&t),cmdline);
+  s=getsprintf("%s: %s",strdate(&t),cmdline);
+  check(s);
   rc=nc_put_att_text(ncid,NC_GLOBAL,"history",strlen(s),s);
   error(rc);
   free(s);
   free(cmdline);
-  rc=nc_def_dim(ncid,LAT_DIM_NAME,nlat,&lat_dim_id);
+  rc=nc_def_dim(ncid,nc_config.lat.dim,nlat,&lat_dim_id);
   error(rc);
-  rc=nc_def_dim(ncid,LON_DIM_NAME,nlon,&lon_dim_id);
+  rc=nc_def_dim(ncid,nc_config.lon.dim,nlon,&lon_dim_id);
   error(rc);
-  rc=nc_def_var(ncid,LAT_NAME,NC_DOUBLE,1,&lat_dim_id,&lat_var_id);
+  rc=nc_def_var(ncid,nc_config.lat.name,NC_DOUBLE,1,&lat_dim_id,&lat_var_id);
   error(rc);
-  rc=nc_def_var(ncid,LON_NAME,NC_DOUBLE,1,&lon_dim_id,&lon_var_id);
+  rc=nc_def_var(ncid,nc_config.lon.name,NC_DOUBLE,1,&lon_dim_id,&lon_var_id);
   error(rc);
-  rc=nc_put_att_text(ncid,lon_var_id,"units",strlen("degrees_east"),
-                     "degrees_east");
+  rc=nc_put_att_text(ncid,lon_var_id,"units",strlen(nc_config.lon.unit),
+                     nc_config.lon.unit);
   error(rc);
-  rc=nc_put_att_text(ncid, lon_var_id,"long_name",strlen(LON_LONG_NAME),LON_LONG_NAME);
+  rc=nc_put_att_text(ncid, lon_var_id,"long_name",strlen(nc_config.lon.long_name),nc_config.lon.long_name);
   error(rc);
-  rc=nc_put_att_text(ncid, lon_var_id,"standard_name",strlen(LON_STANDARD_NAME),LON_STANDARD_NAME);
+  rc=nc_put_att_text(ncid, lon_var_id,"standard_name",strlen(nc_config.lon.standard_name),nc_config.lon.standard_name);
   error(rc);
   rc=nc_put_att_text(ncid, lon_var_id,"axis",strlen("X"),"X");
   error(rc);
-  rc=nc_put_att_text(ncid,lat_var_id,"units",strlen("degrees_north"),
-                     "degrees_north");
+  rc=nc_put_att_text(ncid,lat_var_id,"units",strlen(nc_config.lat.unit),
+                     nc_config.lat.unit);
   error(rc);
-  rc=nc_put_att_text(ncid, lat_var_id,"long_name",strlen(LAT_LONG_NAME),LAT_LONG_NAME);
+  rc=nc_put_att_text(ncid, lat_var_id,"long_name",strlen(nc_config.lat.long_name),nc_config.lat.long_name);
   error(rc);
-  rc=nc_put_att_text(ncid, lat_var_id,"standard_name",strlen(LAT_STANDARD_NAME),LAT_STANDARD_NAME);
+  rc=nc_put_att_text(ncid, lat_var_id,"standard_name",strlen(nc_config.lat.standard_name),nc_config.lat.standard_name);
   error(rc);
   rc=nc_put_att_text(ncid, lat_var_id,"axis",strlen("Y"),"Y");
   error(rc);
@@ -233,25 +280,34 @@ int main(int argc,char **argv)
   dim[1]=lon_dim_id;
   rc=nc_def_var(ncid,"index",NC_INT,2,dim,&index_varid);
   error(rc);
+  if(isnetcdf4 && compress)
+  {
+    rc=nc_def_var_deflate(ncid, index_varid, 0, 1,compress);
+    error(rc);
+  }
   rc=nc_put_att_text(ncid, index_varid,"standard_name",strlen("index"),"index");
   error(rc);
-  //rc=nc_put_att_text(ncid, index_varid,"long_name",strlen(long_name),long_name);
+  rc=nc_put_att_text(ncid, index_varid,"long_name",strlen(INDEX_LONG_NAME),INDEX_LONG_NAME);
   error(rc);
-  nc_put_att_int(ncid, index_varid,"missing_value",NC_INT,1,&miss);
-  rc=nc_put_att_int(ncid, index_varid,"_FillValue",NC_INT,1,&miss);
+  nc_put_att_int(ncid, index_varid,"missing_value",NC_INT,1,&nc_config.missing_value.i);
+  rc=nc_put_att_int(ncid, index_varid,"_FillValue",NC_INT,1,&nc_config.missing_value.i);
   error(rc);
   if(header.nbands==2)
   {
     rc=nc_def_var(ncid,"riverlen",NC_FLOAT,2,dim,&len_varid);
+    if(isnetcdf4 && compress)
+    {
+      rc=nc_def_var_deflate(ncid, len_varid, 0, 1,compress);
+      error(rc);
+    }
     rc=nc_put_att_text(ncid,len_varid,"units",strlen("m"),"m");
     error(rc);
     rc=nc_put_att_text(ncid, len_varid,"standard_name",strlen("river_length"),"river_length");
     error(rc);
     rc=nc_put_att_text(ncid, len_varid,"long_name",strlen("length of river"),"length of river");
     error(rc);
-    fmiss=MISSING_VALUE_FLOAT;
-    nc_put_att_float(ncid, len_varid,"missing_value",NC_FLOAT,1,&fmiss);
-    rc=nc_put_att_float(ncid, len_varid,"_FillValue",NC_FLOAT,1,&fmiss);
+    nc_put_att_float(ncid, len_varid,"missing_value",NC_FLOAT,1,&nc_config.missing_value.f);
+    rc=nc_put_att_float(ncid, len_varid,"_FillValue",NC_FLOAT,1,&nc_config.missing_value.f);
     error(rc);
   }
   rc=nc_enddef(ncid);
@@ -263,13 +319,13 @@ int main(int argc,char **argv)
   out=newvec(int,nlon*nlat);
   check(out);
   for(i=0;i<nlon*nlat;i++)
-    out[i]=miss; 
+    out[i]=nc_config.missing_value.i;
   if(header.nbands==2)
   {
     len=newvec(float,nlon*nlat);
     check(len);
     for(i=0;i<nlon*nlat;i++)
-      len[i]=fmiss; 
+      len[i]=nc_config.missing_value.f;
   }
   for(i=0;i<n;i++)
   {
@@ -284,14 +340,20 @@ int main(int argc,char **argv)
 #ifdef DEBUG
     printf("data[0]=%d\n",data[0]);
 #endif
-    if(data[0]==-1)
-     out[index[src_cell]]=-1;
+    if(data[0]<0)
+      out[index[src_cell]]=data[0];
     else
     {
+      if(data[0]>=n)
+      {
+        fprintf(stderr,"Index for cell (%s)=%d in '%s' must be in <=%d.\n",
+                sprintcoord(line,grid+i),data[0],argv[iarg+2],n-1);
+        return EXIT_FAILURE;
+      }
       dst_cell=findcoord(grid+data[0],grid_soil,&resolution,n);
       if(dst_cell==NOT_FOUND)
       {
-        fprintf(stderr,"Dest cell (%s) not found in `%s`.\n",
+        fprintf(stderr,"Destination cell (%s) not found in `%s`.\n",
                 sprintcoord(line,grid+data[0]),argv[iarg]);
         return EXIT_FAILURE;
       }
@@ -305,7 +367,14 @@ int main(int argc,char **argv)
   }
   rc=nc_put_var_int(ncid,index_varid,out);
   if(header.nbands==2)
+  {
     rc=nc_put_var_float(ncid,len_varid,len);
+    free(len);
+  }
+  free(out);
+  free(grid);
+  free(grid_soil);
+  free(index);
   nc_close(ncid);
   closecoord_netcdf(soil);
   return EXIT_SUCCESS;
@@ -313,4 +382,4 @@ int main(int argc,char **argv)
   fprintf(stderr,"ERROR401: NetCDF is not supported in this version of %s.\n",argv[0]);
   return EXIT_FAILURE;
 #endif
-}
+} /* of 'main' */
