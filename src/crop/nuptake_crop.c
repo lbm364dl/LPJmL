@@ -102,7 +102,7 @@ Real nuptake_crop(Pft *pft,             /**< pointer to PFT data */
       n_uptake=0;
     else
     {
-      if(n_uptake>*n_plant_demand-pft->bm_inc.nitrogen)
+      if(nupsum>*n_plant_demand-pft->bm_inc.nitrogen)
         n_uptake=*n_plant_demand-pft->bm_inc.nitrogen;
       else
         n_uptake=nupsum;
