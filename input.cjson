@@ -28,6 +28,10 @@
   "temp" :         { "id" : 1, "fmt" : "meta",  "name" : "tas_gswp3-w5e5_obsclim_1901-2019.clm.json"},
   "prec" :         { "id" : 2, "fmt" : "meta",  "name" : "pr_gswp3-w5e5_obsclim_1901-2019.clm.json"},
   "lwnet" :        { "id" : 4, "fmt" : "meta",  "name" : "lwnet_gswp3-w5e5_obsclim_1901-2019.clm.json"},
+  /* WHEP: radiation_lwdown mode reads a "lwdown" key (fscanconfig.c:953),
+     which the 6.x default config does not define. ISIMIP publishes
+     downwelling longwave (rlds); net longwave is not published. */
+  "lwdown" :       { "id" : 43, "fmt" : "meta",  "name" : "lwnet_gswp3-w5e5_obsclim_1901-2019.clm.json"},
   "swdown" :       { "id" : 3, "fmt" : "meta",  "name" : "rsds_gswp3-w5e5_obsclim_1901-2019.clm.json"},
   "wind":          { "id" : 15, "fmt" : "meta",  "name" : "sfcwind_gswp3-w5e5_obsclim_1901-2019.clm.json"},
   "tmax":          { "id" : 9, "fmt" : "meta",  "name" : "tasmax_gswp3-w5e5_obsclim_1901-2019.clm.json"},
