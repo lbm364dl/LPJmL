@@ -67,7 +67,7 @@ int main(int argc,char **argv)
     if(!stat(argv[argc-1],&filestat))
     {
       fprintf(stderr,"File '%s' already exists, overwrite (y/n)?\n",argv[argc-1]);
-      scanf("%c",&c);
+      if(scanf("%c",&c)){} /* return value deliberately ignored */
       if(c!='y')
         return EXIT_FAILURE;
     }

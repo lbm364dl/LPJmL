@@ -147,7 +147,7 @@ int main(int argc,char **argv)
   }
   for(i=0;i<n;i++)
   {
-    fread(&intcoord,sizeof(Intcoord),1,file);
+    if(fread(&intcoord,sizeof(Intcoord),1,file)){} /* return value deliberately ignored */
     coord.lon=intcoord.lon*0.01;
     coord.lat=intcoord.lat*0.01;
     area[i]=cellarea(&coord,&config.resolution);
