@@ -29,7 +29,7 @@ Bool check_lu(const Standlist standlist, /**< List of stands */
              )                           /** \return TRUE if crop stand can
                                               be established */
 {
-  Stand *stand;
+  const Stand *stand;
   const Pft *pft;
   Irrigation *data;
   int s;
@@ -38,9 +38,16 @@ Bool check_lu(const Standlist standlist, /**< List of stands */
   {
     foreachstand(stand,s,standlist)
     {
-     if(getlandusetype(stand)!=URBAN && stand->pftlist.n==0)
-      stand->type=&kill_stand;
-     else if(stand->type->landusetype==landusetype)
+     /* Skip stands with no established PFT: getpft(...,0) below would read
+        past the end of an empty list. Do NOT convert them to kill_stand here.
+        check_lu() is a predicate -- see the \return above -- and killing a
+        stand while answering a question destroys setaside stands, which are
+        legitimately empty at the moment a crop is about to be sown into them.
+        sowingcft() then cannot find the setaside via findlandusetype() and the
+        land is never sown. Stand housekeeping belongs in landusechange.c. */
+     if(stand->pftlist.n==0)
+       continue;
+     if(stand->type->landusetype==landusetype)
       {
         pft=getpft(&stand->pftlist,0);
         data=stand->data;
