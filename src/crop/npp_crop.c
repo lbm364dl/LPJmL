@@ -61,8 +61,8 @@ Real npp_crop(Pft *pft,           /**< [inout] PFT variables */
 
   //maximum respiration dependency to NC ratio not higher than measured leaf NC
   if(nc_ratio.root>pft->par->ncleaf.high/par->ratio.root) nc_ratio.root=pft->par->ncleaf.high/par->ratio.root;
-  if(nc_ratio.so>pft->par->ncleaf.high/par->ratio.so) nc_ratio.so=pft->par->ncleaf.high/par->nc_ratio.so;
-  if(nc_ratio.pool>pft->par->ncleaf.high/par->ratio.pool) nc_ratio.pool=pft->par->ncleaf.high/par->nc_ratio.pool;
+  if(nc_ratio.so>pft->par->ncleaf.high/par->ratio.so) nc_ratio.so=pft->par->ncleaf.high/par->ratio.so;
+  if(nc_ratio.pool>pft->par->ncleaf.high/par->ratio.pool) nc_ratio.pool=pft->par->ncleaf.high/par->ratio.pool;
 
   roresp=crop->ind.root.carbon*pft->par->respcoeff*param.k*nc_ratio.root*gtemp_soil;
   soresp=crop->ind.so.carbon*pft->par->respcoeff*param.k*nc_ratio.so*gtemp_air;
@@ -74,7 +74,7 @@ Real npp_crop(Pft *pft,           /**< [inout] PFT variables */
   gresp=(assim-roresp-soresp-presp)*param.r_growth;
   if(gresp<0.0)
     gresp=0.0;
-  npp=assim-soresp-presp-gresp;
+  npp=assim-roresp-soresp-presp-gresp;
   if(config->with_methane)
     forrootsoillayer(l)
     {
