@@ -41,6 +41,7 @@ Real infil_perc(Stand *stand,        /**< Stand pointer */
                 Real infil,          /**< rainfall + melting water - interception_stand (mm) + rw_irrig */
                 Real infil_vol_enth, /**< volumetric enthalpy contained in infil (J/m^3) */
                 Real dprec1,         /**< precipitation only  */
+                Real infil_blue,     /**< irrigation-sourced part of infil (mm) */
                 Real *return_flow_b, /**< blue water return flow (mm) */
                 int npft,            /**< number of natural PFTs */
                 int ncft,            /**< number of crop PFTs */
@@ -207,7 +208,16 @@ Real infil_perc(Stand *stand,        /**< Stand pointer */
       runoff_surface+=slug-influx;
       srunoff=slug-influx; /*surface runoff used for leaching */
     }
-    frac_g_influx=0; /* first layer has only green influx, but lower layers with percolation have mixed frac_g_influx */
+    /* Green share of the water entering the top layer. LPJmL 5.x reached this
+       point through two separate routines: infil_perc_rain(), called with the
+       rain parcel and setting frac_g_influx=1, and infil_perc_irr(), called
+       with the irrigation parcel and setting frac_g_influx=0. 6.x merged them
+       into this one routine called once with the SUM of both parcels, but kept
+       the irrigation branch's constant 0, which books every drop of rain as
+       blue and drives frac_g to zero on stands that are never irrigated at
+       all. The split has to be computed from the parcel composition instead.
+       Lower layers overwrite this with the donor layer's own frac_g below. */
+    frac_g_influx=(infil>epsilon) ? max(0,min(1,(infil-infil_blue)/infil)) : 1;
     dprec-=influx;
     if(dprec<0) enth=FALSE;
 
@@ -235,9 +245,12 @@ Real infil_perc(Stand *stand,        /**< Stand pointer */
         vol_water_enth=(soil->temp[l]>=0?c_water:c_ice)*soil->temp[l]+(soil->temp[l]>=0?c_water2ice:0); /* set enthalpy of water flowing out of this layer and into the below layer */
         if(enth) reconcile_layer_energy_with_water_shift(soil,l,-influx,vol_water_enth,config); /* account for enthalpy of water outflow  */
         /*update frac_g: new green fraction equals old green amount + new green amount divided by total water */
+        /* The incoming water carries frac_g_influx like the sprinkler/surface
+           branch below; dropping that term silently books all of it as blue,
+           which shows up as blue water on rainfed paddy rice. */
         updated_soil_water=soil->w[l]*soil->whcs[l]+soil->ice_depth[l]+soil->w_fw[l]+soil->ice_fw[l];
         if(updated_soil_water>previous_soil_water[l] && updated_soil_water>0)
-          stand->frac_g[l]=(previous_soil_water[l]*stand->frac_g[l])/updated_soil_water;
+          stand->frac_g[l]=(previous_soil_water[l]*stand->frac_g[l] + (updated_soil_water - previous_soil_water[l])*frac_g_influx)/updated_soil_water;
       }
       outflux+=influx;
       *return_flow_b+=influx;

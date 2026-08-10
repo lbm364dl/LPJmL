@@ -165,7 +165,7 @@ Real daily_natural(Stand *stand,                /**< [inout] stand pointer */
               day,year,sprintcoord(line,&stand->cell->coord),climate->prec, melt);
 #endif
 
-    runoff+=infil_perc(stand,climate->prec+melt-intercep_stand,vol_water_enth,climate->prec,&return_flow_b,npft,ncft,config);
+    runoff+=infil_perc(stand,climate->prec+melt-intercep_stand,vol_water_enth,climate->prec,0,&return_flow_b,npft,ncft,config);
     if (stand->type->landusetype==WETLAND)     //if stand frac is very small
     {
       runoff+= stand->cell->lateral_water/stand->frac;
@@ -184,7 +184,7 @@ Real daily_natural(Stand *stand,                /**< [inout] stand pointer */
               day,year,sprintcoord(line,&stand->cell->coord), climate->prec, melt);
 #endif
 
-    runoff+= infil_perc(stand,climate->prec+lateral_in+melt-intercep_stand,vol_water_enth,climate->prec,&return_flow_b,npft,ncft,config);
+    runoff+= infil_perc(stand,climate->prec+lateral_in+melt-intercep_stand,vol_water_enth,climate->prec,0,&return_flow_b,npft,ncft,config);
     stand->cell->lateral_water-=lateral_in*stand->frac;
   }
 
