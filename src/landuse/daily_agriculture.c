@@ -355,7 +355,7 @@ Real daily_agriculture(Stand *stand,                /**< [inout] stand pointer *
             day,year,sprintcoord(line,&stand->cell->coord),rainmelt, rw_apply, irrig_apply);
 #endif
 
-  runoff+=infil_perc(stand,rainmelt+rw_apply+irrig_apply, vol_water_enth,climate->prec+rw_apply+irrig_apply,&return_flow_b,npft,ncft,config);
+  runoff+=infil_perc(stand,rainmelt+rw_apply+irrig_apply, vol_water_enth,climate->prec+rw_apply+irrig_apply,irrig_apply,&return_flow_b,npft,ncft,config);
 
   foreachpft(pft,p,&stand->pftlist)
   {

@@ -43,7 +43,7 @@ void test_with_percolation_of_same_temp_soiltemps_should_not_change(void)
   for (int i = 0; i < 10; i++)
   {
     update_soil_thermal_state(&st->soil, initial_temp, &test_config);
-    infil_perc(st, 20, initial_temp * c_water + c_water2ice, 20, &return_flow_b, 1, 1, &test_config);
+    infil_perc(st, 20, initial_temp * c_water + c_water2ice, 20, 0, &return_flow_b, 1, 1, &test_config);
   }
 
   the_temps_should_have_remained_equal(st->soil.temp, initial_temp);
@@ -63,7 +63,7 @@ void test_with_drip_irrigation_of_same_temp_soiltemps_should_not_change(void)
   for (int i = 0; i < 10; i++)
   {
     update_soil_thermal_state(&st->soil, initial_temp, &test_config);
-    infil_perc(st, 20, initial_temp * c_water + c_water2ice, 0, &return_flow_b, 1, 1, &test_config);
+    infil_perc(st, 20, initial_temp * c_water + c_water2ice, 0, 0, &return_flow_b, 1, 1, &test_config);
   }
 
   the_temps_should_have_remained_equal(st->soil.temp, initial_temp);
@@ -83,7 +83,7 @@ void test_with_spinkler_irrigation_of_same_temp_soiltemps_should_not_change(void
   for (int i = 0; i < 10; i++)
   {
     update_soil_thermal_state(&st->soil, initial_temp, &test_config);
-    infil_perc(st, 20, initial_temp * c_water + c_water2ice, 0, &return_flow_b, 1, 1, &test_config);
+    infil_perc(st, 20, initial_temp * c_water + c_water2ice, 0, 0, &return_flow_b, 1, 1, &test_config);
   }
 
   the_temps_should_have_remained_equal(st->soil.temp, initial_temp);
