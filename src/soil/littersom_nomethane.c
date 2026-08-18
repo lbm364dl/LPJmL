@@ -271,6 +271,23 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
           getoutputindex(&stand->cell->output,CSHIFT_FAST_NV,l,config)+=param.fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].fast;
           getoutputindex(&stand->cell->output,CSHIFT_SLOW_NV,l,config)+=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].slow;
         }
+        /* WHEP: agricultural and managed-grassland counterparts. MUST be kept in
+           step with the identical block in littersom.c: daily_littersom() calls
+           THIS function whenever methane is off, which is the WHEP production
+           configuration, so an addition made only in littersom.c is silently
+           absent from every WHEP run while still working in any methane-enabled
+           test. Stand-fraction weighted, unlike _nv, because these stand types
+           occupy a fraction of the cell. */
+        if(decom_sum.carbon>0 && isagriculture(stand))
+        {
+          getoutputindex(&stand->cell->output,CSHIFT_FAST_AGR,l,config)+=param.fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].fast*stand->frac;
+          getoutputindex(&stand->cell->output,CSHIFT_SLOW_AGR,l,config)+=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].slow*stand->frac;
+        }
+        if(decom_sum.carbon>0 && getlandusetype(stand)==GRASSLAND)
+        {
+          getoutputindex(&stand->cell->output,CSHIFT_FAST_MGRASS,l,config)+=param.fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].fast*stand->frac;
+          getoutputindex(&stand->cell->output,CSHIFT_SLOW_MGRASS,l,config)+=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].slow*stand->frac;
+        }
         if(decom_sum.nitrogen>0)
         {
           soil->pool[l].slow.nitrogen+=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.nitrogen*soil->c_shift[l][soil->litter.item[p].pft->id].slow;
