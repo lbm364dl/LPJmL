@@ -25,6 +25,8 @@
                               index==SOILNO3_LAYER || index==SOILNH4_LAYER || index==SOILTEMP || index==SWC ||\
                               index==RESPONSE_LAYER_AGR || index==RESPONSE_LAYER_NV ||\
                               index==CSHIFT_FAST_NV || index==CSHIFT_SLOW_NV ||\
+                              index==CSHIFT_FAST_AGR || index==CSHIFT_SLOW_AGR ||\
+                              index==CSHIFT_FAST_MGRASS || index==CSHIFT_SLOW_MGRASS ||\
                               index == SOILC_AGR_LAYER || index==PERC)
 
 #define isstand_output(index) (index==STAND_BURNTAREA || index==STAND_FDI || index==STAND_SURFACE_FI || index==STAND_FIREDURATION)

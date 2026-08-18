@@ -86,7 +86,7 @@
 #define NO_FERTILIZER 0
 #define FERTILIZER 1
 #define AUTO_FERTILIZER 2
-#define NOUT 384            /* number of output files */
+#define NOUT 390            /* number of output files */
 #define GRIDBASED 1         /* pft-specific outputs scaled by stand->frac */
 #define PFTBASED 0          /* pft-specific outputs not scaled by stand->frac */
 #define ANNUAL -2
@@ -477,6 +477,15 @@
 #define DFMC 381
 #define FIREDURATIONDAYS 382
 #define LITTERMOIST 383
+
+/* WHEP soil-carbon diagnostics (whep#807 follow-up, LPJmL output request 2026-08-18).
+   Additive only: no existing output's value or meaning changes. */
+#define VSCAL 384
+#define PFT_NIND 385
+#define CSHIFT_FAST_AGR 386
+#define CSHIFT_SLOW_AGR 387
+#define CSHIFT_FAST_MGRASS 388
+#define CSHIFT_SLOW_MGRASS 389
 
 #define PFT_GCGP_COUNT 0
 #define NDAY_MONTH 1
