@@ -86,7 +86,7 @@
 #define NO_FERTILIZER 0
 #define FERTILIZER 1
 #define AUTO_FERTILIZER 2
-#define NOUT 390            /* number of output files */
+#define NOUT 397            /* number of output files */
 #define GRIDBASED 1         /* pft-specific outputs scaled by stand->frac */
 #define PFTBASED 0          /* pft-specific outputs not scaled by stand->frac */
 #define ANNUAL -2
@@ -486,6 +486,41 @@
 #define CSHIFT_SLOW_AGR 387
 #define CSHIFT_FAST_MGRASS 388
 #define CSHIFT_SLOW_MGRASS 389
+
+/* Natural-vegetation litterfall carbon (WHEP rerun request 2026-08-25, item 1).
+   WHEP feeds natural land its PFT NPP as the soil carbon input, which also
+   carries standing-biomass increment, harvested carbon and fire losses. This
+   is the litter-layer flux the contract actually asks for. Credited wherever
+   LITFALLC is credited and isnatural(stand) holds, so the model's own
+   definition of natural (NATURAL or WETLAND, stand.h:110) decides. */
+#define LITFALLC_NV 390
+
+/* Litterfall separated at land-use conversion (WHEP answers 2026-08-25, S2
+   option c). LITFALLC_NV carries standing natural-vegetation litterfall only;
+   the conversion pulse -- residues left when natural land is cleared -- is
+   moved into LITFALLC_LUC in remove_vegetation_copy(). Booking the pulse as
+   natural would credit a class that is shrinking in that very year, and the
+   carbon physically enters the receiving stand's soil. Nitrogen twins added
+   because the marginal cost now is one guard per site and a rerun later. */
+#define LITFALLC_LUC 391
+#define LITFALLN_NV 392
+#define LITFALLN_LUC 393
+
+/* Monthly per-CFT applied irrigation (WHEP rerun request 2026-08-25, item 5).
+   Irrigation was available monthly without a crop dimension (IRRIG) or per
+   crop annually (CFT_AIRRIG / CFT_NIR), never both, so it could not be placed
+   on the crop that received it at the time it received it. Same 2*nirrig band
+   layout and same accumulation sites as CFT_AIRRIG; only the timestep differs,
+   so the monthly reset and the write are handled by the declared timestep. */
+#define CFT_AIRRIG_MONTH 394
+
+/* Managed-grassland litterfall, so WHEP's three land-use classes are each an
+   output rather than one of them being a residual. Measured on a 300-cell
+   1901-1930 test, litfallc - nv - luc - agr was 19.5% of total litterfall and
+   contained managed grassland AND setaside grass, which cannot be separated
+   after the fact. With this output the residual is setaside alone. */
+#define LITFALLC_MGRASS 395
+#define LITFALLN_MGRASS 396
 
 #define PFT_GCGP_COUNT 0
 #define NDAY_MONTH 1

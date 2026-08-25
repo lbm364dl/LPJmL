@@ -184,9 +184,15 @@ Real daily_agriculture_tree(Stand *stand,                /**< stand pointer */
 #endif
 
       if(config->pft_output_scaled)
-        getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply*stand->frac;
+        {
+          getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply*stand->frac;
+          getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply*stand->frac;
+        }
       else
-        getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply;
+        {
+          getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply;
+          getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply;
+        }
     }
   }
 

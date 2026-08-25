@@ -57,8 +57,16 @@ static Harvest harvest_grass(Stand *stand, /**< pointer to stand */
     grass->ind.leaf.nitrogen*=(1-hfrac);
     stand->soil.litter.item[pft->litter].bg.carbon+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind;
     getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
     stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
     pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*(1-pft->par->fn_turnover);
     grass->ind.root.carbon*=(1-hfrac*param.rootreduction);
     grass->ind.root.nitrogen*=(1-hfrac*param.rootreduction);
@@ -96,8 +104,16 @@ static Harvest harvest_grass_mowing(Stand *stand,const Config *config)
 
     stand->soil.litter.item[pft->litter].bg.carbon+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind;
     getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
     stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
     pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*(1-pft->par->fn_turnover);
 
     grass->ind.root.carbon*=(1-hfrac*param.rootreduction);
@@ -163,8 +179,16 @@ static Harvest harvest_grass_grazing_ext(Stand *stand,const Config *config)
 
     stand->soil.litter.item[pft->litter].bg.carbon+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind;
     getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
     stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
     pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*(1-pft->par->fn_turnover);
 
     grass->ind.root.carbon*=(1-hfrac*param.rootreduction);
@@ -245,8 +269,16 @@ static Harvest harvest_grass_grazing_int(Stand *stand,const Config *config)
 
       stand->soil.litter.item[pft->litter].bg.carbon+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind;
       getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+      if(getlandusetype(pft->stand)==GRASSLAND)
+        getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+      if(isnatural(pft->stand))
+        getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
       stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*pft->par->fn_turnover;
       getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+      if(getlandusetype(pft->stand)==GRASSLAND)
+        getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+      if(isnatural(pft->stand))
+        getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
       pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*(1-pft->par->fn_turnover);
 
       grass->ind.root.carbon*=(1-hfrac*param.rootreduction);
@@ -403,8 +435,16 @@ static Harvest harvest_grass_grazing_live(Stand *stand,const Config *config)
 
       stand->soil.litter.item[pft->litter].bg.carbon+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind;
       getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+      if(getlandusetype(pft->stand)==GRASSLAND)
+        getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
+      if(isnatural(pft->stand))
+        getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*hfrac*param.rootreduction*pft->nind*stand->frac;
       stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*pft->par->fn_turnover;
       getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+      if(getlandusetype(pft->stand)==GRASSLAND)
+        getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
+      if(isnatural(pft->stand))
+        getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*stand->frac*pft->par->fn_turnover;
       pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*hfrac*param.rootreduction*pft->nind*(1-pft->par->fn_turnover);
 
       grass->ind.root.carbon*=(1-hfrac*param.rootreduction);

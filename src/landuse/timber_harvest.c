@@ -81,31 +81,71 @@ Stocks timber_harvest(Pft *pft,      /**< Pointer to tree PFT */
   /* transfer non-harvested wood, leaves, and roots of trees cut to litter */
   soil->litter.item[pft->litter].agtop.leaf.carbon+=tree->ind.leaf.carbon*ftimber*(*nind)*(1-takeAway[2]);
   getoutput(output,LITFALLC,config)+=tree->ind.leaf.carbon*ftimber*(*nind)*(1-takeAway[2])*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=tree->ind.leaf.carbon*ftimber*(*nind)*(1-takeAway[2])*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=tree->ind.leaf.carbon*ftimber*(*nind)*(1-takeAway[2])*standfrac;
   soil->litter.item[pft->litter].agtop.leaf.nitrogen+=tree->ind.leaf.nitrogen*ftimber*(*nind)*(1-takeAway[2]);
   getoutput(output,LITFALLN,config)+=tree->ind.leaf.nitrogen*ftimber*(*nind)*(1-takeAway[2])*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=tree->ind.leaf.nitrogen*ftimber*(*nind)*(1-takeAway[2])*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=tree->ind.leaf.nitrogen*ftimber*(*nind)*(1-takeAway[2])*standfrac;
   for(i=0;i<NFUELCLASS;i++)
   {
     soil->litter.item[pft->litter].agtop.wood[i].carbon+=(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon)*
                                          ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3]);
     getoutput(output,LITFALLC,config)+=(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon)*
                                          ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3])*standfrac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon)*
+                                           ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3])*standfrac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon)*
+                                           ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3])*standfrac;
     soil->litter.item[pft->litter].agtop.wood[i].nitrogen+=(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen)*
                                          ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3]);
     getoutput(output,LITFALLN,config)+=(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen)*
                                          ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3])*standfrac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen)*
+                                           ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3])*standfrac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen)*
+                                           ftimber*(*nind)*treepar->fuelfrac[i]*(1-takeAway[3])*standfrac;
     soil->litter.item[pft->litter].agtop.wood[i].carbon+=(tree->ind.heartwood.carbon+tree->ind.sapwood.carbon*2.0/3.0)*
                  ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])));
     getoutput(output,LITFALLC,config)+=(tree->ind.heartwood.carbon+tree->ind.sapwood.carbon*2.0/3.0)*
                  ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])))*standfrac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=(tree->ind.heartwood.carbon+tree->ind.sapwood.carbon*2.0/3.0)*
+                   ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])))*standfrac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=(tree->ind.heartwood.carbon+tree->ind.sapwood.carbon*2.0/3.0)*
+                   ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])))*standfrac;
     soil->litter.item[pft->litter].agtop.wood[i].nitrogen+=(tree->ind.heartwood.nitrogen+tree->ind.sapwood.nitrogen*2.0/3.0)*
                  ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])));
     getoutput(output,LITFALLN,config)+=(tree->ind.heartwood.nitrogen+tree->ind.sapwood.nitrogen*2.0/3.0)*
                  ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])))*standfrac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=(tree->ind.heartwood.nitrogen+tree->ind.sapwood.nitrogen*2.0/3.0)*
+                   ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])))*standfrac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=(tree->ind.heartwood.nitrogen+tree->ind.sapwood.nitrogen*2.0/3.0)*
+                   ftimber*(*nind)*treepar->fuelfrac[i]*(1-((0.84*takeAway[0])+(0.16*takeAway[1])))*standfrac;
   }
   soil->litter.item[pft->litter].bg.carbon+=tree->ind.root.carbon*ftimber*(*nind)*(1-takeAway[3]); //*(1-takeAway_roots)
   getoutput(output,LITFALLC,config)+=tree->ind.root.carbon*ftimber*(*nind)*(1-takeAway[3])*standfrac; //*(1-takeAway_roots)
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=tree->ind.root.carbon*ftimber*(*nind)*(1-takeAway[3])*standfrac; //*(1-takeAway_roots)
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=tree->ind.root.carbon*ftimber*(*nind)*(1-takeAway[3])*standfrac; //*(1-takeAway_roots)
   soil->litter.item[pft->litter].bg.nitrogen+=tree->ind.root.nitrogen*ftimber*(*nind)*(1-takeAway[3]); //*(1-takeAway_roots)
   getoutput(output,LITFALLN,config)+=tree->ind.root.nitrogen*ftimber*(*nind)*(1-takeAway[3])*standfrac; //*(1-takeAway_roots)
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=tree->ind.root.nitrogen*ftimber*(*nind)*(1-takeAway[3])*standfrac; //*(1-takeAway_roots)
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=tree->ind.root.nitrogen*ftimber*(*nind)*(1-takeAway[3])*standfrac; //*(1-takeAway_roots)
   /* update carbon pools by reducing nind by number of trees cut */
   harvest.carbon+=harvestroots.carbon+harvestleaves.carbon;
   harvest.nitrogen+=harvestroots.nitrogen+harvestleaves.nitrogen;
@@ -127,19 +167,47 @@ Stocks timber_harvest(Pft *pft,      /**< Pointer to tree PFT */
   /* transfer non-harvested wood, leaves, fruits and roots of trees cut to litter */
   soil->litter.item[pft->litter].agtop.leaf.carbon+=tree->ind.leaf.carbon*ftimber*(*nind);
   getoutput(output,LITFALLC,config)+=tree->ind.leaf.carbon*ftimber*(*nind)*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=tree->ind.leaf.carbon*ftimber*(*nind)*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=tree->ind.leaf.carbon*ftimber*(*nind)*standfrac;
   soil->litter.item[pft->litter].agtop.leaf.carbon+=pft->bm_inc.carbon*ftimber;
   getoutput(output,LITFALLC,config)+=pft->bm_inc.carbon*ftimber*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=pft->bm_inc.carbon*ftimber*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=pft->bm_inc.carbon*ftimber*standfrac;
   soil->litter.item[pft->litter].agtop.leaf.carbon+=tree->fruit.carbon*ftimber;
   getoutput(output,LITFALLC,config)+=tree->fruit.carbon*ftimber*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=tree->fruit.carbon*ftimber*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=tree->fruit.carbon*ftimber*standfrac;
   soil->litter.item[pft->litter].agtop.leaf.nitrogen+=tree->ind.leaf.nitrogen*ftimber*(*nind);
   getoutput(output,LITFALLN,config)+=tree->ind.leaf.nitrogen*ftimber*(*nind)*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=tree->ind.leaf.nitrogen*ftimber*(*nind)*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=tree->ind.leaf.nitrogen*ftimber*(*nind)*standfrac;
   soil->litter.item[pft->litter].agtop.leaf.nitrogen+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)*ftimber;
   getoutput(output,LITFALLN,config)+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)*ftimber*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)*ftimber*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)*ftimber*standfrac;
 
   soil->litter.item[pft->litter].bg.carbon+=(tree->ind.root.carbon+(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon+tree->excess_carbon))*ftimber*(*nind);
   getoutput(output,LITFALLC,config)+=(tree->ind.root.carbon+(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon+tree->excess_carbon))*ftimber*(*nind)*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=(tree->ind.root.carbon+(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon+tree->excess_carbon))*ftimber*(*nind)*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=(tree->ind.root.carbon+(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon+tree->excess_carbon))*ftimber*(*nind)*standfrac;
   soil->litter.item[pft->litter].bg.nitrogen+=(tree->ind.root.nitrogen+(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen))*ftimber*(*nind);
   getoutput(output,LITFALLN,config)+=(tree->ind.root.nitrogen+(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen))*ftimber*(*nind)*standfrac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=(tree->ind.root.nitrogen+(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen))*ftimber*(*nind)*standfrac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=(tree->ind.root.nitrogen+(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen))*ftimber*(*nind)*standfrac;
   getoutput(output,LITFALLC_WOOD,config)+=(tree->ind.sapwood.carbon/3.0-tree->ind.debt.carbon+tree->excess_carbon)*
                                        ftimber*(*nind)*standfrac;
   getoutput(output,LITFALLN_WOOD,config)+=(tree->ind.sapwood.nitrogen/3.0-tree->ind.debt.nitrogen)*

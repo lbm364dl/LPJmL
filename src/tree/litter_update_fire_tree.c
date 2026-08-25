@@ -32,14 +32,30 @@ void litter_update_fire_tree(Litter *litter, /**< Litter pool */
   output=&pft->stand->cell->output; 
   litter->item[pft->litter].agtop.leaf.carbon+=tree->ind.leaf.carbon*frac;
   getoutput(output,LITFALLC,config)+=tree->ind.leaf.carbon*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=tree->ind.leaf.carbon*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=tree->ind.leaf.carbon*frac*pft->stand->frac;
   litter->item[pft->litter].agtop.leaf.nitrogen+=tree->ind.leaf.nitrogen*frac;
   getoutput(output,LITFALLN,config)+=tree->ind.leaf.nitrogen*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=tree->ind.leaf.nitrogen*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=tree->ind.leaf.nitrogen*frac*pft->stand->frac;
   if(pft->nind>0)
   {
     litter->item[pft->litter].agtop.leaf.nitrogen+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)/pft->nind*frac;
     litter->item[pft->litter].agtop.leaf.carbon+=tree->fruit.carbon/pft->nind*frac;
     getoutput(output,LITFALLN,config)+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)/pft->nind*frac*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)/pft->nind*frac*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=(pft->bm_inc.nitrogen+tree->fruit.nitrogen)/pft->nind*frac*pft->stand->frac;
     getoutput(output,LITFALLC,config)+=tree->fruit.carbon/pft->nind*frac*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=tree->fruit.carbon/pft->nind*frac*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=tree->fruit.carbon/pft->nind*frac*pft->stand->frac;
     pft->bm_inc.nitrogen*=(pft->nind-frac)/pft->nind;
     tree->fruit.carbon*=(pft->nind-frac)/pft->nind;
     tree->fruit.nitrogen*=(pft->nind-frac)/pft->nind;
@@ -50,12 +66,24 @@ void litter_update_fire_tree(Litter *litter, /**< Litter pool */
                                   tree->ind.debt.carbon+tree->excess_carbon)*frac*treepar->fuelfrac[i];
     getoutput(output,LITFALLC,config)+=(tree->ind.sapwood.carbon*2/3+tree->ind.heartwood.carbon-
                                   tree->ind.debt.carbon+tree->excess_carbon)*frac*treepar->fuelfrac[i]*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=(tree->ind.sapwood.carbon*2/3+tree->ind.heartwood.carbon-
+                                    tree->ind.debt.carbon+tree->excess_carbon)*frac*treepar->fuelfrac[i]*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=(tree->ind.sapwood.carbon*2/3+tree->ind.heartwood.carbon-
+                                    tree->ind.debt.carbon+tree->excess_carbon)*frac*treepar->fuelfrac[i]*pft->stand->frac;
     getoutput(output,LITFALLC_WOOD,config)+=(tree->ind.sapwood.carbon*2/3+tree->ind.heartwood.carbon-
                                   tree->ind.debt.carbon+tree->excess_carbon)*frac*treepar->fuelfrac[i]*pft->stand->frac;
     litter->item[pft->litter].agtop.wood[i].nitrogen+=(tree->ind.sapwood.nitrogen*2/3+tree->ind.heartwood.nitrogen-
                                   tree->ind.debt.nitrogen)*frac*treepar->fuelfrac[i];
     getoutput(output,LITFALLN,config)+=(tree->ind.sapwood.nitrogen*2/3+tree->ind.heartwood.nitrogen-
                                   tree->ind.debt.nitrogen)*frac*treepar->fuelfrac[i]*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=(tree->ind.sapwood.nitrogen*2/3+tree->ind.heartwood.nitrogen-
+                                    tree->ind.debt.nitrogen)*frac*treepar->fuelfrac[i]*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=(tree->ind.sapwood.nitrogen*2/3+tree->ind.heartwood.nitrogen-
+                                    tree->ind.debt.nitrogen)*frac*treepar->fuelfrac[i]*pft->stand->frac;
     getoutput(output,LITFALLN_WOOD,config)+=(tree->ind.sapwood.nitrogen*2/3+tree->ind.heartwood.nitrogen-
                                   tree->ind.debt.nitrogen)*frac*treepar->fuelfrac[i]*pft->stand->frac;
     update_fbd_tree(litter,pft->par->fuelbulkdensity,
@@ -64,8 +92,16 @@ void litter_update_fire_tree(Litter *litter, /**< Litter pool */
   }
   litter->item[pft->litter].bg.carbon+=(tree->ind.sapwood.carbon/3+tree->ind.root.carbon)*frac;
   getoutput(output,LITFALLC,config)+=(tree->ind.sapwood.carbon/3+tree->ind.root.carbon)*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=(tree->ind.sapwood.carbon/3+tree->ind.root.carbon)*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=(tree->ind.sapwood.carbon/3+tree->ind.root.carbon)*frac*pft->stand->frac;
   litter->item[pft->litter].bg.nitrogen+=(tree->ind.sapwood.nitrogen/3+tree->ind.root.nitrogen)*frac;
   getoutput(output,LITFALLN,config)+=(tree->ind.sapwood.nitrogen/3+tree->ind.root.nitrogen)*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=(tree->ind.sapwood.nitrogen/3+tree->ind.root.nitrogen)*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=(tree->ind.sapwood.nitrogen/3+tree->ind.root.nitrogen)*frac*pft->stand->frac;
   update_fbd_tree(&pft->stand->soil.litter,pft->par->fuelbulkdensity,tree->ind.leaf.carbon*treepar->turnover.leaf*frac,0); //CHECK
 
 } /* of 'litter_update_fire_tree' */

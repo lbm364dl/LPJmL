@@ -82,6 +82,10 @@ Stocks turnover_grass(Litter *litter, /**< Litter pool */
     }
     litter->item[pft->litter].agtop.leaf.carbon+=reprod;
     getoutput(output,LITFALLC,config)+=reprod*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=reprod*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=reprod*pft->stand->frac;
   }
   if(pft->bm_inc.nitrogen>0)
   {
@@ -105,6 +109,10 @@ Stocks turnover_grass(Litter *litter, /**< Litter pool */
     }
     litter->item[pft->litter].agtop.leaf.nitrogen+=reprod;
     getoutput(output,LITFALLN,config)+=reprod*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=reprod*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=reprod*pft->stand->frac;
   }
 
   /* turnover */
@@ -129,8 +137,16 @@ Stocks turnover_grass(Litter *litter, /**< Litter pool */
     gturn.root.nitrogen=grass->ind.root.nitrogen*grasspar->turnover.root*fraction;
     litter->item[pft->litter].bg.carbon+=gturn.root.carbon*pft->nind;
     getoutput(output,LITFALLC,config)+=gturn.root.carbon*pft->nind*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=gturn.root.carbon*pft->nind*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=gturn.root.carbon*pft->nind*pft->stand->frac;
     litter->item[pft->litter].bg.nitrogen+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
     pft->bm_inc.nitrogen+=gturn.root.nitrogen*pft->nind*(1-pft->par->fn_turnover);
   }
   else
@@ -152,13 +168,29 @@ Stocks turnover_grass(Litter *litter, /**< Litter pool */
     gturn.leaf.nitrogen=grass->ind.leaf.nitrogen*grasspar->turnover.leaf*fraction;
     litter->item[pft->litter].agtop.leaf.carbon+=gturn.leaf.carbon*pft->nind;
     getoutput(output,LITFALLC,config)+=gturn.leaf.carbon*pft->nind*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=gturn.leaf.carbon*pft->nind*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=gturn.leaf.carbon*pft->nind*pft->stand->frac;
     litter->item[pft->litter].agtop.leaf.nitrogen+=gturn.leaf.nitrogen*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=gturn.leaf.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=gturn.leaf.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=gturn.leaf.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
     update_fbd_grass(litter,pft->par->fuelbulkdensity,gturn.leaf.carbon*pft->nind);
     litter->item[pft->litter].bg.carbon+=gturn.root.carbon*pft->nind;
     getoutput(output,LITFALLC,config)+=gturn.root.carbon*pft->nind*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=gturn.root.carbon*pft->nind*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=gturn.root.carbon*pft->nind*pft->stand->frac;
     litter->item[pft->litter].bg.nitrogen+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=gturn.root.nitrogen*pft->nind*pft->par->fn_turnover*pft->stand->frac;
     pft->bm_inc.nitrogen+=(gturn.root.nitrogen+gturn.leaf.nitrogen)*pft->nind*(1-pft->par->fn_turnover);
   }
   grass->turn.root.carbon=grass->turn_litt.root.carbon=grass->turn.leaf.carbon=grass->turn_litt.leaf.carbon=0.0;
@@ -171,6 +203,10 @@ Stocks turnover_grass(Litter *litter, /**< Litter pool */
   /* turnover of excess carbon as root exudates */
   litter->item[pft->litter].bg.carbon+=grass->excess_carbon*pft->nind*grasspar->turnover.root;
   getoutput(output,LITFALLC,config)+=grass->excess_carbon*pft->nind*grasspar->turnover.root*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=grass->excess_carbon*pft->nind*grasspar->turnover.root*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=grass->excess_carbon*pft->nind*grasspar->turnover.root*pft->stand->frac;
   grass->excess_carbon-=grass->excess_carbon*grasspar->turnover.root;
   gturn.leaf.carbon+=gturn.root.carbon;
   gturn.leaf.nitrogen+=gturn.root.nitrogen;

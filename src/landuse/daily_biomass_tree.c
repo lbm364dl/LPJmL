@@ -122,9 +122,15 @@ Real daily_biomass_tree(Stand *stand,                /**< stand pointer */
       }
 #endif
       if(config->pft_output_scaled)
-        getoutputindex(output,CFT_AIRRIG,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=irrig_apply*stand->frac;
+        {
+          getoutputindex(output,CFT_AIRRIG,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=irrig_apply*stand->frac;
+          getoutputindex(output,CFT_AIRRIG_MONTH,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=irrig_apply*stand->frac;
+        }
       else
-        getoutputindex(output,CFT_AIRRIG,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=irrig_apply;
+        {
+          getoutputindex(output,CFT_AIRRIG,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=irrig_apply;
+          getoutputindex(output,CFT_AIRRIG_MONTH,rbtree(ncft)+data->irrigation.irrigation*nirrig,config)+=irrig_apply;
+        }
     }
   }
 

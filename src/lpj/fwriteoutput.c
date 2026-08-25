@@ -649,6 +649,13 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
   writeoutputvar(N2O_NIT_AGR,1);
   writeoutputvar(NH3_AGR,1);
   writeoutputvar(N2_AGR,1);
+  writeoutputvar(LITFALLC_AGR,1);
+  writeoutputvar(LITFALLC_NV,1);
+  writeoutputvar(LITFALLC_LUC,1);
+  writeoutputvar(LITFALLN_NV,1);
+  writeoutputvar(LITFALLN_LUC,1);
+  writeoutputvar(LITFALLC_MGRASS,1);
+  writeoutputvar(LITFALLN_MGRASS,1);
   writeoutputvar(LITFALLN_AGR,1);
   writeoutputvar(HARVESTC_AGR,1);
   writeoutputvar(HARVESTN_AGR,1);
@@ -1597,6 +1604,7 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
   writeoutputarray(CFTFRAC,1);
   writeoutputarray(CFT_NHARVEST,1);
   writeoutputarray(CFT_AIRRIG,1);
+  writeoutputarray(CFT_AIRRIG_MONTH,1);
   writeoutputarray(CFT_FPAR,ndate1);
   writeoutputarray(LUC_IMAGE,1);
   writeoutputarray(CFT_NFERT,1);

@@ -55,8 +55,17 @@ void harvest_crop(Output *output,      /**< Output data */
   update_fbd_crop(&stand->soil.litter,pft->par->fuelbulkdensity,
                    (crop->ind.leaf.carbon+crop->ind.so.carbon+crop->ind.pool.carbon)*res_onfield);
   getoutput(output,LITFALLC,config)+=(crop->ind.leaf.carbon + crop->ind.pool.carbon)*res_onfield*stand->frac;
+  if(getlandusetype(stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=(crop->ind.leaf.carbon + crop->ind.pool.carbon)*res_onfield*stand->frac;
+  if(isnatural(stand))
+    getoutput(output,LITFALLC_NV,config)+=(crop->ind.leaf.carbon + crop->ind.pool.carbon)*res_onfield*stand->frac;
+  getoutput(output,LITFALLC_AGR,config)+=(crop->ind.leaf.carbon + crop->ind.pool.carbon)*res_onfield*stand->frac;
   stand->soil.litter.item[pft->litter].agtop.leaf.nitrogen += (crop->ind.leaf.nitrogen + crop->ind.pool.nitrogen)*res_onfield;
   getoutput(output,LITFALLN,config)+=(crop->ind.leaf.nitrogen + crop->ind.pool.nitrogen)*res_onfield*stand->frac;
+  if(getlandusetype(stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=(crop->ind.leaf.nitrogen + crop->ind.pool.nitrogen)*res_onfield*stand->frac;
+  if(isnatural(stand))
+    getoutput(output,LITFALLN_NV,config)+=(crop->ind.leaf.nitrogen + crop->ind.pool.nitrogen)*res_onfield*stand->frac;
   getoutput(output,LITFALLN_AGR,config)+=(crop->ind.leaf.nitrogen + crop->ind.pool.nitrogen)*res_onfield*stand->frac;
   if (!config->residues_fire)
   {
@@ -83,8 +92,17 @@ void harvest_crop(Output *output,      /**< Output data */
   harvest.harvest=crop->ind.so;
   stand->soil.litter.item[pft->litter].bg.carbon+=crop->ind.root.carbon;
   getoutput(output,LITFALLC,config)+=crop->ind.root.carbon*stand->frac;
+  if(getlandusetype(stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=crop->ind.root.carbon*stand->frac;
+  if(isnatural(stand))
+    getoutput(output,LITFALLC_NV,config)+=crop->ind.root.carbon*stand->frac;
+  getoutput(output,LITFALLC_AGR,config)+=crop->ind.root.carbon*stand->frac;
   stand->soil.litter.item[pft->litter].bg.nitrogen+=crop->ind.root.nitrogen;
   getoutput(output,LITFALLN,config)+=crop->ind.root.nitrogen*stand->frac;
+  if(getlandusetype(stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=crop->ind.root.nitrogen*stand->frac;
+  if(isnatural(stand))
+    getoutput(output,LITFALLN_NV,config)+=crop->ind.root.nitrogen*stand->frac;
   getoutput(output,LITFALLN_AGR,config)+=crop->ind.root.nitrogen*stand->frac;
   if(crop->sh!=NULL)
   {

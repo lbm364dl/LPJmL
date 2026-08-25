@@ -53,16 +53,36 @@ void litter_update_grass(Litter *litter, /**< Litter pool */
   litter->item[pft->litter].agtop.leaf.carbon+=grass->ind.leaf.carbon*frac;
   litter->item[pft->litter].agtop.leaf.carbon+=grass->excess_carbon*frac;
   getoutput(output,LITFALLC,config)+=(grass->excess_carbon+grass->ind.leaf.carbon)*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=(grass->excess_carbon+grass->ind.leaf.carbon)*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=(grass->excess_carbon+grass->ind.leaf.carbon)*frac*pft->stand->frac;
   litter->item[pft->litter].agtop.leaf.nitrogen+=grass->ind.leaf.nitrogen*frac;
   getoutput(output,LITFALLN,config)+=grass->ind.leaf.nitrogen*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.leaf.nitrogen*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=grass->ind.leaf.nitrogen*frac*pft->stand->frac;
   litter->item[pft->litter].agtop.leaf.nitrogen+=pft->bm_inc.nitrogen*frac;
   getoutput(output,LITFALLN,config)+=pft->bm_inc.nitrogen*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=pft->bm_inc.nitrogen*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=pft->bm_inc.nitrogen*frac*pft->stand->frac;
   update_fbd_grass(litter,pft->par->fuelbulkdensity,
                    grass->ind.leaf.carbon*frac);
   litter->item[pft->litter].bg.carbon+=grass->ind.root.carbon*frac;
   getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*frac*pft->stand->frac;
   litter->item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*frac;
   getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*frac*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*frac*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*frac*pft->stand->frac;
 #ifdef CHECK_BALANCE
   stocks=litterstocks(litter);
   end = vegc_sum(pft)+pft->bm_inc.carbon+stocks.carbon;

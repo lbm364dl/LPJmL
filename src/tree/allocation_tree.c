@@ -272,6 +272,10 @@ Bool allocation_tree(Litter *litter,   /**< litter pool */
         tinc_ind.leaf.carbon=(tree->ind.root.carbon+tinc_ind.root.carbon)*lmtorm-tree->ind.leaf.carbon;
         litter->item[pft->litter].agtop.leaf.carbon+=-tinc_ind.leaf.carbon*pft->nind;
         getoutput(&pft->stand->cell->output,LITFALLC,config)+=-tinc_ind.leaf.carbon*pft->nind*pft->stand->frac;
+        if(getlandusetype(pft->stand)==GRASSLAND)
+          getoutput(&pft->stand->cell->output,LITFALLC_MGRASS,config)+=-tinc_ind.leaf.carbon*pft->nind*pft->stand->frac;
+        if(isnatural(pft->stand))
+          getoutput(&pft->stand->cell->output,LITFALLC_NV,config)+=-tinc_ind.leaf.carbon*pft->nind*pft->stand->frac;
       }
       tinc_ind.sapwood.carbon=(tinc_ind.leaf.carbon+tree->ind.leaf.carbon)*treepar->wood_density*tree->height*
                        pft->par->sla/treepar->k_latosa-tree->ind.sapwood.carbon;
