@@ -687,7 +687,7 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_WOOD_AGR,config));
-    writedata(output,DECAY_WOOD_AGR,vec,year,date,0,config);
+    writedata(output,DECAY_WOOD_AGR,vec,year,date,ndata,config);
   }
   if(iswrite(output,DECAY_WOOD_NV))
   {
@@ -695,7 +695,7 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_WOOD_NV,config));
-    writedata(output,DECAY_WOOD_NV,vec,year,date,0,config);
+    writedata(output,DECAY_WOOD_NV,vec,year,date,ndata,config);
   }
   if(iswrite(output,DECAY_LEAF_AGR))
   {
@@ -703,7 +703,7 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_LEAF_AGR,config));
-    writedata(output,DECAY_LEAF_AGR,vec,year,date,0,config);
+    writedata(output,DECAY_LEAF_AGR,vec,year,date,ndata,config);
   }
   if(iswrite(output,DECAY_LEAF_NV))
   {
@@ -711,7 +711,7 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_LEAF_NV,config));
-    writedata(output,DECAY_LEAF_NV,vec,year,date,0,config);
+    writedata(output,DECAY_LEAF_NV,vec,year,date,ndata,config);
   }
   writeoutputvar(LITBURNC,1);
   writeoutputvar(LITBURNC_WOOD,1);
