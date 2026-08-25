@@ -14,7 +14,14 @@
 
 include ../Makefile.inc
 
-GIT_HASH= $(shell git rev-parse HEAD)
+# Stamped into every output file's GIT_hash attribute at LINK time, so it is
+# HEAD when the binary was last linked -- not necessarily the code compiled
+# into it. The 2026-08-18 run was linked at 552f1d68 but contained the
+# littersom_nomethane change only committed afterwards as b523ac57, leaving
+# its netCDF attributes disagreeing with its own README. Appending -dirty
+# when tracked files are modified makes that case self-announcing.
+GIT_DIRTY= $(shell git diff --quiet HEAD -- . ../include ../par 2>/dev/null || echo -dirty)
+GIT_HASH= $(shell git rev-parse HEAD)$(GIT_DIRTY)
 
 OBJ    = lpjml.$O
 
