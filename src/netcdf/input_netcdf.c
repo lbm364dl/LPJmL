@@ -285,6 +285,7 @@ static Bool setvarinput_netcdf(Input_netcdf input,const Filename *filename,
             return TRUE;
           }
           nc_get_att_text(input->ncid,input->varid,"units",newstr);
+          newstr[len]='\0'; /* NetCDF attributes are not terminated */
           if(strcmp(newstr,fromstr))
             fprintf(stderr,"WARNING408: Unit '%s' for '%s' in '%s' differs from unit '%s' in configuration file.\n",
                     newstr,(filename->var==NULL) ? name : filename->var,filename->name,fromstr);

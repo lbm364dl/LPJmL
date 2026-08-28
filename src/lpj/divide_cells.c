@@ -73,7 +73,7 @@ void divide_cells(int *start,       /**< index of first grid cell, set to local 
   int i,r,n,*bound;
   Real *prefix,*wsum,total,target;
   n=*end-*start+1;
-  if(cost==NULL)
+  if(cost==NULL && weight==NULL)
   {
     divide_equal(start,end,rank,ntask);
     return;
@@ -93,7 +93,9 @@ void divide_cells(int *start,       /**< index of first grid cell, set to local 
   total=0;
   for(i=0;i<n;i++)
   {
-    total+=(cost[i]>MINCOST) ? cost[i] : MINCOST;
+    /* without a cost file every cell counts the same, which still lets the
+       task weights alone shift work towards the faster cores */
+    total+=(cost==NULL) ? 1.0 : ((cost[i]>MINCOST) ? cost[i] : MINCOST);
     prefix[i]=total;
   }
   wsum[0]=0;

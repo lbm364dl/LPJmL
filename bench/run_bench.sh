@@ -24,7 +24,7 @@ ln -sf "$(readlink -f "$BIN")" "$STABLE"
 
 cd "$RUN" || exit 1
 START=$(date +%s.%N)
-/usr/bin/time -v mpirun -np "$NP" "${EXTRA[@]}" "$STABLE" "$CFG" \
+nice -n 19 /usr/bin/time -v mpirun -np "$NP" "${EXTRA[@]}" "$STABLE" "$CFG" \
     >"$RUN/output/run.out" 2>"$RUN/output/run.err"
 RC=$?
 END=$(date +%s.%N)

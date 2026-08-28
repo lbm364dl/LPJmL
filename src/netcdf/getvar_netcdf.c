@@ -109,6 +109,7 @@ Bool getvar_netcdf(Climatefile *file,    /**< climate data file */
             return TRUE;
           }
           nc_get_att_text(file->ncid,file->varid,"units",newstr);
+          newstr[len]='\0'; /* NetCDF attributes are not terminated */
           if(strcmp(newstr,fromstr))
             fprintf(stderr,"WARNING408: Unit '%s' in '%s' differs from unit '%s' in configuration file.\n",
                     newstr,filename,fromstr);
