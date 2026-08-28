@@ -277,6 +277,12 @@ struct config
   int nall;      /**< total number of grid cells */
   int rank;      /**< my rank */
   int ntask;     /**< number of parallel tasks */
+  char *cellcost_filename;       /**< file with per-cell cost used to balance the
+                                      decomposition, or NULL for equal cell counts */
+  char *write_cellcost_filename; /**< measure per-cell cost and write it here, or NULL */
+  Real *task_weights;            /**< relative speed of each task, or NULL for equal.
+                                      Lets a heterogeneous machine (P-cores and
+                                      E-cores) be loaded in proportion to core speed */
   int count;     /**< number of grid cells with valid soilcode */
   int fire;      /**< fire disturbance enabled */
   Bool isgsi_livefuel; /**< GSI livefuel enabled (TRUE/FALSE) */
@@ -404,6 +410,10 @@ extern void freeconfig_netcdf(Netcdf_config *);
 extern void createconfig(const Config *);
 extern Bool checkuniqoutput(int,int,const Config *);
 extern void closeconfig(LPJfile *);
+extern void divide_cells(int *,int *,int,int,const Real [],const Real []);
+extern Real *readcellcost(const char *,int,int,Verbosity);
+extern Bool writecellcost(const char *,const Real [],const Config *);
+extern Real *cellcost;
 
 /* Definition of macros */
 

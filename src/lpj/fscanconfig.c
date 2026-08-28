@@ -141,33 +141,57 @@ static Bool readclimatefilename(LPJfile *file,Filename *name,const char *key,Boo
 } /* of 'readclimatefilename' */
 
 
-static void divide(int *start, /**< index of first grid cell */
-                   int *end,   /**< index of last grid cell */
-                   int rank,   /**< my rank id */
-                   int ntask   /**< total number of tasks */
-                  )
+static Bool scanbalancing(LPJfile *file,   /**< pointer to LPJ file */
+                          Config *config, /**< LPJmL configuration */
+                          Verbosity verbose /**< error output enabled */
+                         )                /** \return TRUE on error */
 {
-/*
- * Function is used in the parallel MPI version to distribute the cell grid
- * equally on ntask tasks
- * On return start and end are set to the local boundaries of each task
- */
-  int i,lo,hi,n;
-  n=*end-*start+1;
-  lo=*start;
-  hi=*start+n/ntask-1;
-  if(n % ntask)
-    hi++;
-  for(i=1;i<=rank;i++)
+  /*
+   * Read the optional settings that steer how the cell grid is split over the
+   * tasks. All of them are performance hints: the model is invariant under the
+   * decomposition, so getting them wrong costs speed and never accuracy.
+   */
+  const char *name;
+  int i;
+  if(iskeydefined(file,"cellcost_filename") && !isnull(file,"cellcost_filename"))
   {
-    lo=hi+1;
-    hi=lo+n/ntask-1;
-    if(n % ntask>i)
-      hi++;
+    name=fscanstring(file,NULL,"cellcost_filename",verbose);
+    if(name==NULL)
+      return TRUE;
+    config->cellcost_filename=strdup(name);
+    checkptr(config->cellcost_filename);
   }
-  *start=lo;
-  *end=hi;
-} /* of 'divide' */
+  if(iskeydefined(file,"write_cellcost_filename") && !isnull(file,"write_cellcost_filename"))
+  {
+    name=fscanstring(file,NULL,"write_cellcost_filename",verbose);
+    if(name==NULL)
+      return TRUE;
+    config->write_cellcost_filename=strdup(name);
+    checkptr(config->write_cellcost_filename);
+  }
+  if(iskeydefined(file,"task_weights") && !isnull(file,"task_weights"))
+  {
+    config->task_weights=newvec(Real,config->ntask);
+    checkptr(config->task_weights);
+    if(fscanrealarray(file,config->task_weights,config->ntask,"task_weights",verbose))
+    {
+      free(config->task_weights);
+      config->task_weights=NULL;
+      return TRUE;
+    }
+    for(i=0;i<config->ntask;i++)
+      if(config->task_weights[i]<=0)
+      {
+        if(verbose)
+          fprintf(stderr,"ERROR233: Task weight %d=%g must be greater than zero.\n",
+                  i,config->task_weights[i]);
+        free(config->task_weights);
+        config->task_weights=NULL;
+        return TRUE;
+      }
+  }
+  return FALSE;
+} /* of 'scanbalancing' */
 
 static Bool checktimestep(const Config *config)
 {
@@ -1182,9 +1206,18 @@ Bool fscanconfig(Config *config,    /**< LPJ configuration */
                 config->nall,config->ntask);
       return TRUE;
     }
+    if(scanbalancing(file,config,verbose))
+      return TRUE;
     if(config->ntask>1) /* parallel mode? */
-      divide(&config->startgrid,&endgrid,config->rank,
-             config->ntask);
+    {
+      Real *cost;
+      cost=(config->cellcost_filename==NULL) ? NULL :
+           readcellcost(config->cellcost_filename,config->firstgrid,config->nall,
+                        verbose);
+      divide_cells(&config->startgrid,&endgrid,config->rank,config->ntask,
+                   cost,config->task_weights);
+      free(cost);
+    }
     config->ngridcell=endgrid-config->startgrid+1;
   }
   fscanint2(file,&config->nspinup,"nspinup");

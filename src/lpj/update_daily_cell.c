@@ -74,7 +74,7 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
   Real eet_lake=0;
   Real rice_emiss=0;
 #ifdef USE_TIMING
-  double tstart;
+  double tstart,tstand;
   timing_start(tstart);
 #endif
   if(!cell->skip)
@@ -232,7 +232,13 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
       stand->soil.micro_heating[0]+=m_heat*stand->soil.litter.decomC;
 #endif
 
+#ifdef USE_TIMING
+      timing_start(tstand);
+#endif
       update_soil_thermal_state(&stand->soil,climate->temp,config);
+#ifdef USE_TIMING
+      timing_stop(SOIL_THERMAL_FCN,tstand);
+#endif
 
       foreachsoillayer(l)
       {
@@ -464,9 +470,15 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
         cell->balance.influx.nitrogen+=bnf*stand->frac;
       }
 
+#ifdef USE_TIMING
+      timing_start(tstand);
+#endif
       runoff=daily_stand(stand,co2,climate,day,month,daylength,
                          gtemp_air,gtemp_soil[0],eeq,par,
                          melt,npft,ncft,year,intercrop,agrfrac,config);
+#ifdef USE_TIMING
+      timing_stop(DAILY_STAND_FCN,tstand);
+#endif
       denitrification(stand,npft,ncft,config);
 
       nh3=volatilization(stand->soil.NH4[0],climate->windspeed,climate->temp,

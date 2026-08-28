@@ -42,11 +42,23 @@ Bool iterateyear(Outputfile *output,  /**< Output file data */
     initmonthly_grid(grid,month,year,input->climate,config);
     foreachdayofmonth(dayofmonth,month)
     {
-      for(cell=0;cell<config->ngridcell;cell++)
-      {
-        update_daily_cell(grid+cell,cell,&daily,co2,*pch4,input,day,dayofmonth,month,year,
-                          npft,ncft,intercrop,config);
-      }
+      if(cellcost==NULL)
+        for(cell=0;cell<config->ngridcell;cell++)
+        {
+          update_daily_cell(grid+cell,cell,&daily,co2,*pch4,input,day,dayofmonth,month,year,
+                            npft,ncft,intercrop,config);
+        }
+      else
+        /* measuring for a cell cost file: time each cell so that a later run
+           can split the grid by cost instead of by cell count */
+        for(cell=0;cell<config->ngridcell;cell++)
+        {
+          double tcell;
+          tcell=mrun();
+          update_daily_cell(grid+cell,cell,&daily,co2,*pch4,input,day,dayofmonth,month,year,
+                            npft,ncft,intercrop,config);
+          cellcost[cell]+=mrun()-tcell;
+        }
       updatedaily_grid(output,grid,input->extflow,day,month,year,npft,ncft,config);
       day++;
     } /* of 'foreachdayofmonth */

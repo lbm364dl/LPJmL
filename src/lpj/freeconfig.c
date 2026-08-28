@@ -35,6 +35,9 @@ void freeconfig(Config *config /**< LPJmL configuration */
   free(config->cmd);
   free(config->json_filename);
   free(config->coupled_model);
+  free(config->cellcost_filename);
+  free(config->write_cellcost_filename);
+  free(config->task_weights);
   free(config->compress_cmd);
   free(config->compress_suffix);
   if(config->soil_filename.fmt!=CDF)
