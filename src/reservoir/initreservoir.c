@@ -322,8 +322,6 @@ Bool initreservoir(Cell grid[],   /**< LPJ grid */
     }
   config->irrig_res_back=pnet_dup(config->irrig_res);
   pnet_reverse(config->irrig_res_back);
-  pnet_sortconnect(config->irrig_res);
-  pnet_sortconnect(config->irrig_res_back);
   pnet_setup(config->irrig_res);
   pnet_setup(config->irrig_res_back);
   for(cell=0;cell<config->ngridcell;cell++)

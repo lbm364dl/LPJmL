@@ -74,7 +74,6 @@ extern Pnet *pnet_init_bounds(int,int,const int []);
 #endif
 extern Pnet *pnet_dup(const Pnet *);
 extern int pnet_setup(Pnet *);
-extern int pnet_sortconnect(Pnet *);
 extern int pnet_reverse(Pnet *);
 extern void pnet_free(Pnet *);
 extern int pnet_addconnect(Pnet *,int,int);

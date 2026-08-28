@@ -99,7 +99,7 @@ balancing recovers essentially all of it.
 
 ## Findings, 2026-08-28
 
-### Runs that start from a restart file do not reproduce themselves
+### Runs that start from a restart file did not reproduce themselves -- FIXED
 
 Two runs of the same configuration, same binary, same number of ranks, give
 different results. Six runs of a 500-cell case produced five distinct answers.
@@ -130,9 +130,29 @@ This matters beyond performance work: it means a production run cannot be
 reproduced, and two runs that differ only in configuration cannot be compared
 without knowing how much of the difference is noise.
 
-`-DTRACE_DAILY` (`src/lpj/trace_day.c`) is the tool that localised it, and is
-the tool for finishing the job. The next step is valgrind on the 500-cell
-restart case, which is a five-second run.
+**Cause**: `Cropdates` has seven members and the restart file carried six.
+`fallow[2]`, the multicropping wait counter, was written by nobody and read by
+nobody, so `freadcropdates()` left it as heap garbage and `sowingcft()` branched
+on it on day one in every cell with cropland. Valgrind named it in one run.
+Fixed by writing it to the restart and reading it back when present, so older
+restart files still load.
+
+After the fix, at full scale -- global grid, river routing, from the spun-up
+restart -- these all hold:
+
+| test | result |
+| --- | --- |
+| same configuration twice, 24 ranks | identical |
+| equal split vs split by cost, 24 ranks | identical |
+| 24 ranks vs 12 ranks | identical |
+
+So the model is now reproducible, invariant to the number of tasks, and
+invariant to how the grid is split. That is what makes byte-identical output a
+usable gate for the performance work.
+
+A canonical ordering of each cell's river inflows (`pnet_sortconnect`) was
+written and then removed: rank-invariance holds without it, and it changed
+results, so it was buying nothing.
 
 ### The load imbalance is real and large
 

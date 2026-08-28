@@ -16,8 +16,7 @@
 include ../../Makefile.inc
 
 OBJS    = pnet_init.$O  pnet_setup.$O pnet_addconnect.$O intlist.$O\
-          pnet_reverse.$O pnet_free.$O pnet_strerror.$O pnet_dup.$O\
-          pnet_sortconnect.$O
+          pnet_reverse.$O pnet_free.$O pnet_strerror.$O pnet_dup.$O
 
 INC     = ../../include
 LIBDIR  = ../../lib

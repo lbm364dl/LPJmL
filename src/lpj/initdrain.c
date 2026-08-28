@@ -432,17 +432,12 @@ Bool initdrain(Cell grid[],    /**< Cell grid             */
     if(iserror(initirrig(grid,config),config))
       return TRUE; 
     pnet_reverse(config->irrig_neighbour);
-    pnet_sortconnect(config->irrig_neighbour);
     pnet_setup(config->irrig_neighbour);
-    pnet_sortconnect(config->irrig_back);
     pnet_setup(config->irrig_back);
   }
   if(iserror(initriver(grid,config),config))
     return TRUE;
   pnet_reverse(config->route);
-  /* fix the order the inflows of a cell are summed in, so that discharge does
-     not depend on how the grid happens to be split over the tasks */
-  pnet_sortconnect(config->route);
   pnet_setup(config->route);
   return FALSE;
 } /* of 'initdrain' */
