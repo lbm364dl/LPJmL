@@ -67,8 +67,14 @@ void denitrification(Stand *stand,        /**< pointer to stand */
     N2O_denit = 0.0;
     if(soil->temp[l]<=45.9)
     {
-      FW = min(1.0,6.664096e-10*exp(20.92912*denit_t)); /* newly fitted parameters on curve with threshold orig 21.12912*/
-      TCDF = 1-exp(-CDN*FT*Corg);
+      /* below -745 the exponential is exactly zero, so the product and the
+         minimum are too; that is where glibc's underflow path lives */
+      FW = (20.92912*denit_t < -745) ? 0.0
+           : min(1.0,6.664096e-10*exp(20.92912*denit_t)); /* newly fitted parameters on curve with threshold orig 21.12912*/
+      /* for CDN*FT*Corg above 37 the exponential is below 2^-53 and the
+         difference from 1 is exactly zero, while glibc takes its underflow
+         path to get there */
+      TCDF = (CDN*FT*Corg > 37) ? 1.0 : 1-exp(-CDN*FT*Corg);
       if(TCDF>0)
         N_denit = FW*TCDF*soil->NO3[l];
     }
