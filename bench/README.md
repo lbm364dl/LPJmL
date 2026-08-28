@@ -96,3 +96,54 @@ machine and then runs, in order:
 Predicted from the land-use proxy before any of this was measured: the current
 equal-count split loads the heaviest of 30 tasks 1.50x above the mean, and
 balancing recovers essentially all of it.
+
+## Findings, 2026-08-28
+
+### Runs that start from a restart file do not reproduce themselves
+
+Two runs of the same configuration, same binary, same number of ranks, give
+different results. Six runs of a 500-cell case produced five distinct answers.
+This is **not** caused by anything on this branch: it reproduces on unmodified
+`origin/master`.
+
+What is known:
+
+* A run that starts from bare ground (`restart: false`) is reproducible. Many
+  runs, bit-identical. The trigger is reading a restart file.
+* It is not river routing. It reproduces with `river_routing: false`.
+* It is not MPI. It reproduces at one rank, just less often.
+* The state at the start of the year is identical between runs -- carbon and
+  nitrogen stocks, stand fractions, PFT counts, soil water, ice, and the soil
+  heat grid all agree exactly. So the restart is read correctly.
+* The divergence appears during the **first day's cell loop**, with identical
+  precipitation, in cells carrying **five or more crop stands**. Cells with
+  fewer never differ.
+* It is not uninitialised stack: `-ftrivial-auto-var-init=pattern` does not fix
+  it. `MALLOC_PERTURB_` results are inconclusive.
+* Every field of `Pftcrop` and of `Irrigation` is restored by its reader.
+
+Magnitude on a one-year run: about 1.6% of cells differ, some by tens of
+percent locally; global means shift by 0.01-0.04%. Over 423 years the
+divergence has 423 times as long to grow.
+
+This matters beyond performance work: it means a production run cannot be
+reproduced, and two runs that differ only in configuration cannot be compared
+without knowing how much of the difference is noise.
+
+`-DTRACE_DAILY` (`src/lpj/trace_day.c`) is the tool that localised it, and is
+the tool for finishing the job. The next step is valgrind on the 500-cell
+restart case, which is a five-second run.
+
+### The load imbalance is real and large
+
+From `bin/lpjml_timing`, one transient year, 24 ranks, equal cell counts:
+
+    update_daily_cell   Tmin 5.57s   Tavg 46.37s   Tmax 89.16s
+
+The heaviest task does sixteen times the work of the lightest. Splitting by
+measured cell cost brings that to 26.61 / 45.72 / 75.82.
+
+The residual is the machine: a P-core runs this workload in 21.8s where an
+E-core takes 35.6s, so an E-core is worth 0.61 of a P-core. Ranks left on
+E-cores set the pace no matter how the work is split, which is what
+`task_weights` together with `--bind-to core --map-by core` is for.
