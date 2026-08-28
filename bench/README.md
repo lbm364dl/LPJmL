@@ -179,12 +179,47 @@ Times are LPJmL's own "Wall clock time", so startup is excluded.
 | split by measured cell cost | 446 s | 1.30x |
 | split by cost, pinned, weighted for P-cores vs E-cores | 380 s | 1.52x |
 
-0.0020 -> 0.0013 sec/cell/year. Against the 41,234 s production run that is
-about 11.5 h -> 7.5 h.
+Then the source and compiler work (4.8% on its own) and the move to all 32
+hardware threads with retuned weights:
+
+| configuration | simulation | speedup |
+| --- | --- | --- |
+| equal cell count, 24 ranks unpinned | 546 s | — |
+| split by cost, 32 threads pinned, weights retuned twice | **324 s** | **1.69x** |
+
+0.0019 -> 0.0011 sec/cell/year. Against the 41,234 s production run that is
+about 11.5 h -> 6.8 h. Every step verified byte-identical.
 
 The cost file predicted 1.79x, and the gap is expected: 1.79x was the ceiling
 for `update_daily_cell` alone, while river routing, output collection and the
 monthly and annual steps do not shrink.
+
+## Retuning the task weights
+
+The weights say how fast each task is. An isolated core-speed measurement is
+only a first guess: a P-core hyperthread pair, or sixteen E-cores sharing L2,
+behave differently once every thread is busy. Measured here, the guess was
+wrong by enough to matter -- P-threads actually spread over 0.86-1.00 and
+E-cores over 0.57-0.79, a P/E ratio of 0.80 rather than the 0.92 an isolated
+measurement suggests.
+
+`cellcost.py retune` closes the loop. Run split by cost *and* writing a cost
+file, then ask what each task's speed must have been given what it was handed
+and how long it took:
+
+    cellcost.py retune --split-by cost.bin --measured cost_insitu.bin \
+        --ntask 32 --weights <the weights that run used>
+
+It prints a new `task_weights` line. Two iterations converged here:
+
+| iteration | slowest task / mean | wall |
+| --- | --- | --- |
+| first guess from isolated core speeds | 1.339 | 341 s |
+| after one retune | 1.265 | 331 s |
+| after two | **1.030** | **324 s** |
+
+At 1.03 there is nothing left in load balancing; what remains is the
+serialised part of the run.
 
 ## How to use it
 
