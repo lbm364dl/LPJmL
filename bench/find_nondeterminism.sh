@@ -28,8 +28,19 @@ MODE=${1:-reproduce}
     --startgrid 30000 --endgrid 30499 --river-routing false --lastyear 1901 >/dev/null
 CFG=$RUN/configurations/config_scenario_1.json
 
+# Never rebuild while a run is in flight: make would replace bin/lpjml under a
+# running process, and the rebuild would perturb whatever is being timed.
+guard() {
+    if pgrep -x lpjml >/dev/null || pgrep -x lpjml_bench_bin >/dev/null; then
+        echo "an lpjml run is in progress; wait for it or pass BIN=<prebuilt>" >&2
+        exit 1
+    fi
+}
+
 build() {  # build a binary with the given extra flags, into $2
     local extra=$1 out=$2
+    if [ -n "${BIN:-}" ]; then cp "$BIN" "$2"; return; fi
+    guard
     make clean >/dev/null 2>&1
     ./configure.sh -prefix "$ROOT" -inpath /home/usuario/WHEP/LPJmL_inputs \
         -noerror -DTRACE_DAILY >/dev/null 2>&1
