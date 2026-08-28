@@ -129,7 +129,27 @@ say "-- outputs must still match --"
 "$ROOT/bench/cmp_runs.py" "$RUNS/t_eq24" "$RUNS/t_bl24" 2>&1 | tail -3 | tee -a "$LOG"
 "$ROOT/bench/cmp_runs.py" "$RUNS/t_eq24" "$RUNS/t_bd24" 2>&1 | tail -3 | tee -a "$LOG"
 
-# ------------------------------------------------------------------- profile
+# ------------------------------------------------------- sampling profile
+# One rank, mid-latitude cells, no MPI in the way: this is where the CPU time
+# actually goes inside the model.  Needs kernel.perf_event_paranoid <= 1.
+say "== perf: sampling profile of a single rank =="
+if perf stat -e cycles true >/dev/null 2>&1; then
+    "$ROOT/bench/mkconfig.py" --out "$RUNS/prof" --startgrid 36000 --endgrid 36499 \
+        --river-routing false --nspinup 6 --firstyear 1901 --lastyear 1901 >/dev/null
+    ( cd "$RUNS/prof" && rm -f output/scenario_1/* restart/scenario_1/*
+      perf record -F 499 -g --call-graph=fp -o "$RUNS/perf.data" -- \
+          "$ROOT/bin/lpjml_prof" configurations/config_scenario_1.json >/dev/null 2>&1 )
+    say "-- flat profile (self time) --"
+    perf report -i "$RUNS/perf.data" --no-children --percent-limit 0.4 \
+        --stdio -g none 2>/dev/null | head -45 | tee -a "$LOG"
+    say "-- call graph, top entries --"
+    perf report -i "$RUNS/perf.data" --children --percent-limit 2 \
+        --stdio -g graph,0.35,caller 2>/dev/null | head -70 | tee -a "$LOG"
+else
+    say "perf unavailable (kernel.perf_event_paranoid=$(cat /proc/sys/kernel/perf_event_paranoid))"
+fi
+
+# --------------------------------------------------- built-in timing profile
 say "== profile: where the time goes, and how far the tasks drift apart =="
 mkcfg t_prof
 addcost t_prof

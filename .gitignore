@@ -193,3 +193,4 @@ restart/
 
 # performance work
 bin/lpjml_timing
+bin/lpjml_prof
