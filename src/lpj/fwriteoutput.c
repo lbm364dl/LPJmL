@@ -719,6 +719,13 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
   writeoutputarray(RESPONSE_LAYER_NV,1);
   writeoutputarray(CSHIFT_FAST_NV,ndate1);
   writeoutputarray(CSHIFT_SLOW_NV,ndate1);
+  /* WHEP: agricultural and managed-grassland counterparts (littersom.c). */
+  writeoutputarray(CSHIFT_FAST_AGR,ndate1);
+  writeoutputarray(CSHIFT_SLOW_AGR,ndate1);
+  writeoutputarray(CSHIFT_FAST_MGRASS,ndate1);
+  writeoutputarray(CSHIFT_SLOW_MGRASS,ndate1);
+  /* WHEP: per-PFT nitrogen allocation scalar (allocation_tree/grass.c). */
+  writeoutputarray(VSCAL,ndate1);
   if(isopen(output,VEGC))
   {
     if(iswrite2(VEGC,timestep,year,config) || (timestep==ANNUAL && config->outnames[VEGC].timestep>0))
@@ -1391,6 +1398,30 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
       }
     }
     writeoutputarray(PFT_VEGC,1);
+  }
+  /* WHEP: stem density per natural PFT. pft_cleaf/croot/csapw/chawo write the
+     PER-INDIVIDUAL pools (they omit the *pft->nind that vegc_sum() applies), so
+     multiplying them by this output converts them to the gC/m2 their unit
+     string already claims. Emitted as a separate output rather than changing
+     those four, so no existing run's numbers move. */
+  if(isopen(output,PFT_NIND))
+  {
+    if(iswrite2(PFT_NIND,timestep,year,config) || (timestep==ANNUAL && config->outnames[PFT_NIND].timestep>0))
+    {
+      for(cell=0;cell<config->ngridcell;cell++)
+      {
+        if(!grid[cell].skip)
+        {
+          foreachstand(stand,s,grid[cell].standlist)
+          {
+            if(isnatural(stand))
+              foreachpft(pft,p,&stand->pftlist)
+                getoutputindex(&grid[cell].output,PFT_NIND,pft->par->id,config)+=pft->nind;
+          }
+        }
+      }
+    }
+    writeoutputarray(PFT_NIND,1);
   }
   if(isopen(output,PFT_VEGN))
   {

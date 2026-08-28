@@ -69,6 +69,8 @@ Bool allocation_grass(Litter *litter,   /**< litter pool */
     wscal=pft->wscal_mean/NDAYYEAR;
     lmtorm=getpftpar(pft,lmro_ratio)*(getpftpar(pft,lmro_offset)+(1-getpftpar(pft,lmro_offset))*min(vscal,wscal));
   }
+  /* WHEP: see allocation_tree.c -- emitted before the reset below. */
+  getoutputindex(&pft->stand->cell->output,VSCAL,pft->par->id,config)+=vscal;
 
   pft->wscal_mean=pft->vscal=0;
   /* daily allocation for new grasslands */

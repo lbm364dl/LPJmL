@@ -166,6 +166,10 @@ Bool allocation_tree(Litter *litter,   /**< litter pool */
     wscal=pft->wscal_mean/NDAYYEAR;
     lmtorm=getpftpar(pft,lmro_ratio)*(getpftpar(pft,lmro_offset)+(1-getpftpar(pft,lmro_offset))*min(vscal,wscal));
   }
+  /* WHEP: record the SAME normalised vscal that lmtorm above was derived from.
+     pft->vscal is a day-counter reset annually, so only this normalised value is
+     comparable with the wscal output. */
+  getoutputindex(&pft->stand->cell->output,VSCAL,pft->par->id,config)+=vscal;
   bm_inc_ind.carbon=pft->bm_inc.carbon/pft->nind;
   bm_inc_ind.nitrogen=pft->bm_inc.nitrogen/pft->nind;
   treepar=pft->par->data;

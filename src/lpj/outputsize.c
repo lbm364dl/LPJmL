@@ -36,6 +36,7 @@ int outputsize(int index,     /**< output index */
     case PFT_CROOT: case PFT_NROOT: case PFT_CSAPW: case PFT_NSAPW:
     case PFT_CHAWO: case PFT_NHAWO: case PFT_LAI: case PFT_BNF:
     case PFT_WATER_DEMAND: case PFT_WATER_SUPPLY:
+    case VSCAL: case PFT_NIND:
       return getnnat(npft,config)+2*getnirrig(ncft,config);
     case PFT_HARVESTC: case PFT_RHARVESTC:
     case PFT_HARVESTN: case PFT_RHARVESTN:
@@ -64,6 +65,7 @@ int outputsize(int index,     /**< output index */
       return NSOILLAYER;
     case SOILC_LAYER: case SOILN_LAYER: case SOILNO3_LAYER: case SOILNH4_LAYER: case SOILC_AGR_LAYER:
     case RESPONSE_LAYER_AGR: case RESPONSE_LAYER_NV: case CSHIFT_FAST_NV: case CSHIFT_SLOW_NV: case SWC_VOL:
+    case CSHIFT_FAST_AGR: case CSHIFT_SLOW_AGR: case CSHIFT_FAST_MGRASS: case CSHIFT_SLOW_MGRASS:
       return LASTLAYER;
     case GROWING_PERIOD: case CFT_TEMP:case CFT_PREC:
     case CFT_SRAD: case CFT_ABOVEGBMC: case CFT_ABOVEGBMN:

@@ -365,6 +365,13 @@
     { "id" : PFT_HEIGHT, "name": "pft_height", "timestep" : "annual","var": "heigt", "long_name": "tree height", "unit": "m", "scale": 1.0, "offset" : 0.0},
     { "id" : PFT_AGTOP_LITTERC, "name": "pft_agtop_litterc", "timestep" : "daily", "var" : "litterc", "long_name" : "PFT-specific above-ground litter carbon", "unit" : "gC/m2", "scale" : 1.0, "offset" : 0.0},
     { "id" : LITTERMOIST, "name": "littermoist", "timestep" : "monthly", "var" : "littermoist", "long_name" : "litter moisture", "unit" : "mm", "scale" : 1.0, "offset" : 0.0},
+    /* WHEP soil-carbon diagnostics (LPJmL output request 2026-08-18) */
+    { "id" : VSCAL, "name": "vscal", "timestep" : "annual", "var": "vscal", "long_name": "nitrogen scalar limiting leaf-to-root allocation, as used for lmtorm", "unit": "-", "scale": 1.0, "offset" : 0.0},
+    { "id" : PFT_NIND, "name": "pft_nind", "timestep" : "annual", "var": "nind", "long_name": "stem density per PFT (multiply pft_cleaf/croot/csapw/chawo by this to get gC/m2)", "unit": "1/m2", "scale": 1.0, "offset" : 0.0},
+    { "id" : CSHIFT_FAST_AGR, "name": "cshift_fast_agr", "timestep" : "annual", "var": "cshift_fast_agr", "long_name": "carbon shifted into the fast soil pool per layer on agricultural stands", "unit": "gC/m2/yr", "scale": 1.0, "offset" : 0.0},
+    { "id" : CSHIFT_SLOW_AGR, "name": "cshift_slow_agr", "timestep" : "annual", "var": "cshift_slow_agr", "long_name": "carbon shifted into the slow soil pool per layer on agricultural stands", "unit": "gC/m2/yr", "scale": 1.0, "offset" : 0.0},
+    { "id" : CSHIFT_FAST_MGRASS, "name": "cshift_fast_mgrass", "timestep" : "annual", "var": "cshift_fast_mgrass", "long_name": "carbon shifted into the fast soil pool per layer on managed grassland", "unit": "gC/m2/yr", "scale": 1.0, "offset" : 0.0},
+    { "id" : CSHIFT_SLOW_MGRASS, "name": "cshift_slow_mgrass", "timestep" : "annual", "var": "cshift_slow_mgrass", "long_name": "carbon shifted into the slow soil pool per layer on managed grassland", "unit": "gC/m2/yr", "scale": 1.0, "offset" : 0.0},
     { "id" : PFT_PHEN, "name": "pft_phen", "timestep" : "monthly","var": "phenology", "long_name": "PFT-specific phenology", "unit": "1", "scale": 1.0, "offset" : 0.0},
     { "id" : FIREDURATION, "name": "fireduration", "timestep" : "monthly", "var" : "fireduration", "long_name" :  "fire duration", "unit" : "min", "scale" : 1.0, "offset" : 0.0},
     { "id" : FIREDURATIONDAYS, "name": "firedurationdays", "timestep" : "monthly", "var" : "firedurationdays", "long_name" :  "fire duration days", "unit" : "d", "scale" : 1.0, "offset" : 0.0},

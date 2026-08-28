@@ -607,6 +607,20 @@ Stocks littersom(Stand *stand,                      /**< [inout] pointer to stan
         getoutputindex(&stand->cell->output,CSHIFT_FAST_NV,l,config)+=soil->fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].fast;
         getoutputindex(&stand->cell->output,CSHIFT_SLOW_NV,l,config)+=(1-soil->fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].slow;
       }
+      /* WHEP: the agricultural and managed-grassland counterparts of the _nv
+         block above. Stand-fraction weighted, unlike _nv, because these stand
+         types occupy a fraction of the cell and the cell-level flux is what the
+         soil-carbon comparison needs. */
+      if(decom_sum.carbon>0 && isagriculture(stand))
+      {
+        getoutputindex(&stand->cell->output,CSHIFT_FAST_AGR,l,config)+=soil->fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].fast*stand->frac;
+        getoutputindex(&stand->cell->output,CSHIFT_SLOW_AGR,l,config)+=(1-soil->fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].slow*stand->frac;
+      }
+      if(decom_sum.carbon>0 && getlandusetype(stand)==GRASSLAND)
+      {
+        getoutputindex(&stand->cell->output,CSHIFT_FAST_MGRASS,l,config)+=soil->fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].fast*stand->frac;
+        getoutputindex(&stand->cell->output,CSHIFT_SLOW_MGRASS,l,config)+=(1-soil->fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][soil->litter.item[p].pft->id].slow*stand->frac;
+      }
       soil->pool[l].slow.nitrogen+=(1-soil->fastfrac)*(1-param.atmfrac)*decom_sum.nitrogen*soil->c_shift[l][soil->litter.item[p].pft->id].slow;
       soil->pool[l].fast.nitrogen+=soil->fastfrac*(1-param.atmfrac)*decom_sum.nitrogen*soil->c_shift[l][soil->litter.item[p].pft->id].fast;
       /* NO3 and N2O from mineralization of organic matter */
