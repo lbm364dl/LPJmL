@@ -190,3 +190,6 @@ restart/
 !testcase_2cell/
 !testcase_2cell/*.clm
 !testcase_2cell/*.dat
+
+# performance work
+bin/lpjml_timing
