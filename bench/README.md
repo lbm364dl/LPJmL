@@ -65,11 +65,84 @@ An 11-hour production run and a benchmark on the same 24-core box produce
 numbers that mean nothing.  Correctness comparisons are unaffected by load and
 can be run at any time.
 
-`perf` needs `kernel.perf_event_paranoid <= 1`; it is 4 here, so sampling
-profiles require `sudo sysctl -w kernel.perf_event_paranoid=1` first.  Without
+`perf` needs `kernel.perf_event_paranoid <= 1`; it has been set to 1 here, so
+sampling profiles work directly.  Without
 it, the built-in `-with_timing` build (`bin/lpjml_timing`) gives a per-function
 breakdown with min/max/avg across ranks, which is also what exposes load
 imbalance.
+
+### The chip is power-limited, and that invalidates multi-rank A/B timing
+
+The package runs under a sustained limit of 111 W averaged over an 80-second
+window, with 253 W available in short bursts:
+
+    /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw -> 111 W / 80 s
+    /sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw -> 253 W / 2 ms
+
+An all-core run therefore starts fast on a full budget and settles to roughly
+2.1 GHz once the moving average catches up, against 3.7 GHz when the budget has
+had time to recover.  How fast a run goes depends on how long the machine idled
+before it.  The same binary and configuration on 32 ranks produced 324, 328,
+331, 332, 387 and 565 seconds -- a 1.7x spread with nothing changed.  It is not
+thermal: the 565-second run was at 71 C and 3.7 GHz while an earlier 332-second
+run was at 52 C and 2.1 GHz, hotter and faster at once.
+
+This is why the earlier `nchunk` comparisons contradicted each other.  With a
+fixed A/B ordering, whichever variant ran first got the recovered budget, and
+the ordering bias was larger than the effect being measured.
+
+The consequence for this harness: **do not A/B compare 32-rank runs.**  A single
+rank draws about 15 W, far below the ceiling, and repeats to about 0.1 s.  Every
+change to per-cell work -- which is all of the compute-side work below -- is
+measured perfectly well, and far more honestly, on one rank.  Multi-rank runs
+remain the right tool for load-balance questions, where the effect is large, but
+each arm needs its ordering reversed and repeated.
+
+## Findings, 2026-08-29: where the time actually goes
+
+A sampling profile of a single rank, which had not been done before, moved the
+work off guesswork.  The stock build spends about an eighth of its time inside
+`pow()`:
+
+    12.6%  littersom_nomethane
+    12.4%  pow  (__ieee754_pow_fma 9.5% + pow@GLIBC 2.9%)
+     3.4%  photosynthesis
+     1.9%  exp
+     ~8%   dynamic linker and MPI startup -- an artifact of a 62 s run
+
+Three call sites accounted for most of the `pow()` time, and all three were
+asking for the same answer repeatedly.  Each change below is exact: it removes a
+recomputation, and never alters an arithmetic expression.
+
+  * `photosynthesis()` computes `ko`, `kc` and `tau` as `pow()` of a fixed base
+    against `(temp-25)*0.1`, and they feed only `fac` and `gammastar`.  Nothing
+    there depends on anything but the temperature -- while `water_stressed()`
+    holds the temperature fixed and calls the function up to fifty times as it
+    bisects for lambda, and every stand in a cell sees the same daily
+    temperature.  Remembering the last temperature returns the same bits.
+
+  * The litter loop in `littersom_nomethane()` calls `pow(q10_wood, e)` twice
+    per PFT with `e` fixed for the whole loop, and the PFT table holds only five
+    distinct `q10_wood` values -- of which 1.0 covers every crop.  Answering
+    each distinct base once per loop is exact.
+
+  * `petpar()` recomputed the solar geometry, the longwave correction and the
+    vapour-pressure slope for every stand, though albedo is its only per-stand
+    input.  Split into `petpar_cell()` and `petpar_stand()`.
+
+Measured at one rank on 1000 cells over three years, against the full 59 MB
+restart state and all five output files:
+
+    stock                                     62.8 s
+    + petpar split                            62.0 s   -1.3%   identical
+    + photosynthesis temperature cache        59.4 s   -5.4%   identical
+    + littersom q10 table                     58.2 s   -7.3%   identical
+
+What is left of `pow()` after those three is spread thin -- `f_wfps` ~5%,
+`calc_soil_thermal_props` ~2.5%, `volatilization` ~2.2%, `infil_perc` ~1.9%,
+`pedotransfer` ~1.5% -- with no exact reduction available.  `f_wfps` raises a
+varying base to a per-soil-type real exponent, and `pedotransfer` looks like a
+constant-per-cell function but depends on soil carbon, which evolves daily.
 
 ## The suite
 
