@@ -15,7 +15,9 @@ CFG="$RUN/configurations/config_scenario_1.json"
 [ -f "$CFG" ] || { echo "no config at $CFG" >&2; exit 1; }
 
 mkdir -p "$RUN/output/scenario_1" "$RUN/restart/scenario_1"
-rm -f "$RUN"/output/scenario_1/* "$RUN"/restart/scenario_1/*
+# Deliberately does not delete anything.  LPJmL recreates its output files, and
+# an unattended benchmark should never need a destructive action.  Use a fresh
+# run directory per experiment (mkconfig.py --out) rather than reusing one.
 
 # Exec through a fixed-length path so the argv string that LPJmL stamps into
 # the restart-file header has the same length for every binary we compare.

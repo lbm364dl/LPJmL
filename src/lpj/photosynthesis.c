@@ -66,26 +66,29 @@ Real photosynthesis(Real *agd,      /**< [out] gross photosynthesis rate (gC/m2/
       fac=kc*(1+po2/ko);
       tau=tau25*pow(q10tau,(temp-25)*0.1); /*reflects the abiltiy of Rubisco to discriminate between CO2 and O2*/
       gammastar=po2/(2*tau);
-      pi=lambdamc3*co2;
-      c1=tstress*param.alphac3*((pi-gammastar)/(pi+2.0*gammastar));
-
-      /* Calculation of C2C3, Eqn 6, Haxeltine & Prentice 1996 */
-
-      c2=(pi-gammastar)/(pi+fac);
-
-      s=(24/daylength)*b;
-      sigma=1-(c2-s)/(c2-param.theta*s);
-      sigma= (sigma<=0) ? 0 : sqrt(sigma);
-      /* Choose C3 value of b for Eqn 10, Haxeltine & Prentice 1996 */
-      /*
-       *       Intercellular CO2 partial pressure in Pa
-       *       Eqn 7, Haxeltine & Prentice 1996
+      /* Calculation of V_max (Rubisco activity) in gC/d/m2, at the optimal
+       * lambda. c1, c2, s and sigma serve only this; c1 and c2 are recomputed
+       * from the actual lambda below and s and sigma are not read again, so
+       * with comp_vm false none of it is needed -- and water_stressed() calls
+       * this up to thirty times that way per bisection.
        */
-
-      /* Calculation of V_max (Rubisco activity) in gC/d/m2*/
-
       if(comp_vm)
       {
+        pi=lambdamc3*co2;
+        c1=tstress*param.alphac3*((pi-gammastar)/(pi+2.0*gammastar));
+
+        /* Calculation of C2C3, Eqn 6, Haxeltine & Prentice 1996 */
+
+        c2=(pi-gammastar)/(pi+fac);
+
+        s=(24/daylength)*b;
+        sigma=1-(c2-s)/(c2-param.theta*s);
+        sigma= (sigma<=0) ? 0 : sqrt(sigma);
+        /* Choose C3 value of b for Eqn 10, Haxeltine & Prentice 1996 */
+        /*
+         *       Intercellular CO2 partial pressure in Pa
+         *       Eqn 7, Haxeltine & Prentice 1996
+         */
         *vm=(1.0/b)*(c1/c2)*((2.0*param.theta-1.0)*s-(2.0*param.theta*s-c2)*sigma)*apar*WC*cq;
         if(*vm<0)
           *vm=0;
@@ -103,11 +106,12 @@ Real photosynthesis(Real *agd,      /**< [out] gross photosynthesis rate (gC/m2/
     {
       c1=tstress*param.alphac4;
       c2=1.0;
-      s=(24/daylength)*b;
-      sigma=1-(c2-s)/(c2-param.theta*s);
-      sigma= (sigma<=0) ? 0 : sqrt(sigma);
       if(comp_vm)
       {
+        /* s and sigma serve only the vmax formula */
+        s=(24/daylength)*b;
+        sigma=1-(c2-s)/(c2-param.theta*s);
+        sigma= (sigma<=0) ? 0 : sqrt(sigma);
         *vm=(1.0/b)*c1/c2*((2.0*param.theta-1.0)*s-(2.0*param.theta*s-c2)*sigma)*apar*WC*cq;
         if(*vm<0)
           *vm=0;

@@ -126,6 +126,52 @@ def cmd_dump(args):
     print(f"heaviest cell / median cell = {cost.max() / max(np.median(cost), 1e-12):.1f}x")
 
 
+def cmd_retune(args):
+    """Derive task weights from a run that measured cost while split by cost.
+
+    The weights say how fast each task is, and a first guess from an isolated
+    core-speed measurement is only a guess: a P-core hyperthread pair, or
+    sixteen E-cores sharing L2, behave differently once every thread is busy.
+
+    Given the cost file a run was SPLIT by, and the cost file that same run
+    MEASURED, each task's speed follows from what it was given and how long it
+    took: speed = assigned work / measured time.  One iteration removes most of
+    what the first guess got wrong.
+    """
+    _, split_cost = read_cost(args.split_by)
+    _, meas_cost = read_cost(args.measured)
+    if split_cost.size != meas_cost.size:
+        raise SystemExit("the two cost files cover different grids")
+    ntask = args.ntask
+    weight = None
+    if args.weights:
+        weight = np.array([float(x) for x in args.weights.split(",")])
+        if weight.size != ntask:
+            raise SystemExit(f"{weight.size} weights for {ntask} tasks")
+    bounds = divide_cost(split_cost, ntask, weight)
+
+    work = np.array([split_cost[bounds[i]:bounds[i + 1]].sum() for i in range(ntask)])
+    time = np.array([meas_cost[bounds[i]:bounds[i + 1]].sum() for i in range(ntask)])
+    if np.any(time <= 0):
+        raise SystemExit("a task measured no time; was the run split the same way?")
+    speed = work / time
+    speed /= speed.max()
+
+    print(f"measured time per task: min {time.min():.1f}s  mean {time.mean():.1f}s  "
+          f"max {time.max():.1f}s   slowest/mean {time.max()/time.mean():.3f}")
+    old = np.ones(ntask) if weight is None else weight
+    print(f"{'task':>5} {'old w':>7} {'new w':>7} {'time s':>8}")
+    for r in range(ntask):
+        print(f"{r:5d} {old[r]:7.3f} {speed[r]:7.3f} {time[r]:8.1f}")
+    print("\ntask_weights: [" + ", ".join(f"{w:.3f}" for w in speed) + "]")
+
+    # what the retuned weights would give, on this run's own numbers
+    nb = divide_cost(split_cost, ntask, speed)
+    nt = np.array([meas_cost[nb[i]:nb[i + 1]].sum() for i in range(ntask)]) * (speed / old)
+    print(f"\npredicted slowest/mean after retuning: {nt.max()/nt.mean():.3f} "
+          f"(was {time.max()/time.mean():.3f})")
+
+
 def cmd_report(args):
     firstcell, cost = read_cost(args.file)
     n, ntask = cost.size, args.ntask
@@ -163,6 +209,13 @@ def main():
     p = sub.add_parser("dump", help="summarise a cost file")
     p.add_argument("file")
     p.set_defaults(func=cmd_dump)
+
+    p = sub.add_parser("retune", help="new task weights from a measured run")
+    p.add_argument("--split-by", required=True, help="cost file the run was split by")
+    p.add_argument("--measured", required=True, help="cost file the run wrote")
+    p.add_argument("--ntask", type=int, required=True)
+    p.add_argument("--weights", default=None, help="weights the run used")
+    p.set_defaults(func=cmd_retune)
 
     p = sub.add_parser("report", help="imbalance implied by a cost file")
     p.add_argument("file")

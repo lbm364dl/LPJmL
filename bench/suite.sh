@@ -48,7 +48,7 @@ say "== P-core vs E-core ratio =="
 "$ROOT/bench/mkconfig.py" --out "$RUNS/pe" --startgrid 30000 --endgrid 30499 \
     --river-routing false --nspinup 4 --firstyear 1901 --lastyear 1901 >/dev/null
 pe_time() {
-    cd "$RUNS/pe" && rm -f output/scenario_1/* restart/scenario_1/*
+    cd "$RUNS/pe"
     local s e
     s=$(date +%s.%N)
     taskset -c "$1" "$ROOT/bin/lpjml" configurations/config_scenario_1.json >/dev/null 2>&1
@@ -92,7 +92,6 @@ PY
 "$ROOT/bench/run_bench.sh" "$RUNS/rr_bl" "$ROOT/bin/lpjml" 24 | tee -a "$LOG"
 say "-- comparison --"
 "$ROOT/bench/cmp_runs.py" "$RUNS/rr_eq" "$RUNS/rr_bl" 2>&1 | tail -5 | tee -a "$LOG"
-rm -f "$RUNS"/rr_eq/restart/scenario_1/* "$RUNS"/rr_bl/restart/scenario_1/*
 
 # --------------------------------------------------------------- timing A / B
 # Five transient years from restart, which is long enough for the fixed startup
@@ -136,7 +135,7 @@ say "== perf: sampling profile of a single rank =="
 if perf stat -e cycles true >/dev/null 2>&1; then
     "$ROOT/bench/mkconfig.py" --out "$RUNS/prof" --startgrid 36000 --endgrid 36499 \
         --river-routing false --nspinup 6 --firstyear 1901 --lastyear 1901 >/dev/null
-    ( cd "$RUNS/prof" && rm -f output/scenario_1/* restart/scenario_1/*
+    ( cd "$RUNS/prof"
       perf record -F 499 -g --call-graph=fp -o "$RUNS/perf.data" -- \
           "$ROOT/bin/lpjml_prof" configurations/config_scenario_1.json >/dev/null 2>&1 )
     say "-- flat profile (self time) --"

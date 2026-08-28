@@ -62,6 +62,8 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
   Real nh3;
   int l,i;
   Real prec_save;
+  Real bioturb,bioturb_keep;  /* bioturbation transfer and retention fractions */
+  Litteritem *litteritem;
   Real agrfrac;
   Real gsi;
   Real litsum_old_nv[2]={0,0},litsum_new_nv[2]={0,0};
@@ -189,12 +191,18 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
     {
       if(isagriculture(stand))
         agrfrac+=stand->frac;
+      /* param is a global, and the stores below could alias it as far as the
+         compiler knows, so both factors were reloaded and recomputed on every
+         one of the four statements */
+      bioturb=param.bioturbate;
+      bioturb_keep=1-param.bioturbate;
       for(l=0;l<stand->soil.litter.n;l++)
       {
-        stand->soil.litter.item[l].agsub.leaf.carbon += stand->soil.litter.item[l].agtop.leaf.carbon*param.bioturbate;
-        stand->soil.litter.item[l].agtop.leaf.carbon *= (1 - param.bioturbate);
-        stand->soil.litter.item[l].agsub.leaf.nitrogen += stand->soil.litter.item[l].agtop.leaf.nitrogen*param.bioturbate;
-        stand->soil.litter.item[l].agtop.leaf.nitrogen *= (1 - param.bioturbate);
+        litteritem=stand->soil.litter.item+l;
+        litteritem->agsub.leaf.carbon += litteritem->agtop.leaf.carbon*bioturb;
+        litteritem->agtop.leaf.carbon *= bioturb_keep;
+        litteritem->agsub.leaf.nitrogen += litteritem->agtop.leaf.nitrogen*bioturb;
+        litteritem->agtop.leaf.nitrogen *= bioturb_keep;
       }
       beta=albedo_stand(stand);
       petpar(&daylength,&par,&eeq,cell->coord.lat,day,climate->temp,climate->lwnet,climate->swdown,config->radiation_lwdown,beta);
