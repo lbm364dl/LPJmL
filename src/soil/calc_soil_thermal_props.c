@@ -29,7 +29,10 @@ void calc_soil_thermal_props(Uniform_temp_sign uniform_temp_sign,       /**< fla
 {
   int  layer, j, gp;
   Real c_froz, c_unfroz;             /* frozen and unfrozen heat capacities */
-  Real lam_froz, lam_unfroz;         /* frozen and unfrozen conductivities */
+  /* Only ever read under the same calc_frozen_values / calc_unfrozen_values
+     guards that assign them, but the compiler cannot see that across the
+     johansen branch and warns once libm calls stop being opaque to it. */
+  Real lam_froz=0, lam_unfroz=0;      /* frozen and unfrozen conductivities */
   Real latent_heat;                  /* volumetric latent heat of fusion in soil */
   Real lam_sat_froz, lam_sat_unfroz; /* frozen and unfrozen conductivities for saturated soil */
   Real waterc_abs_layer;             /* total absolute water content of soil */
