@@ -28,8 +28,10 @@ def diff_ranges(a, b, limit=8):
 
 
 def cmp_restart(pa, pb, header_bytes):
+    if not (os.path.exists(pa) or os.path.exists(pb)):
+        return "restart", "IDENTICAL*", "neither run wrote a restart file"
     if not (os.path.exists(pa) and os.path.exists(pb)):
-        return "restart", "MISSING", ""
+        return "restart", "MISSING", "only one run wrote a restart file"
     sa, sb = os.path.getsize(pa), os.path.getsize(pb)
     if sa != sb:
         return "restart", "SIZE-DIFF", f"{sa} vs {sb}"

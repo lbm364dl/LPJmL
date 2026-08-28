@@ -193,10 +193,10 @@ Bool writecellcost(const char *filename, /**< name of cell cost file to create *
 {
   FILE *file;
   Real *all;
-  int version,first,i;
+  int version,first;
   Bool rc;
 #ifdef USE_MPI
-  int *counts,*offsets;
+  int *counts,*offsets,i;
 #endif
   all=NULL;
 #ifdef USE_MPI

@@ -70,3 +70,29 @@ profiles require `sudo sysctl -w kernel.perf_event_paranoid=1` first.  Without
 it, the built-in `-with_timing` build (`bin/lpjml_timing`) gives a per-function
 breakdown with min/max/avg across ranks, which is also what exposes load
 imbalance.
+
+## The suite
+
+`suite.sh --wait` queues the whole measurement behind whatever else is on the
+machine and then runs, in order:
+
+1. **P-core vs E-core.** One rank pinned to CPU 0, one to CPU 16, same work.
+   The ratio is what `task_weights` has to encode.
+2. **Calibration.** One transient year from the 300-year spun-up restart with
+   `write_cellcost_filename` set, producing `cost_measured.bin`. Starting from
+   a restart matters: what a cell costs depends on the vegetation standing on
+   it, so cost measured from bare ground in spinup year 1 is the wrong profile.
+3. **Correctness with river routing on.** Equal split vs cost split, both
+   writing a restart, compared with `cmp_runs.py`. This is the one gate the
+   small-scale tests could not cover, because a cell subset cannot use river
+   routing -- `initdrain()` fails when a cell drains to a cell outside the
+   subset.
+4. **Timing A/B.** Five transient years, equal vs cost split, at 24 and 30
+   ranks, plus a pinned-and-weighted run. Outputs are compared again after.
+5. **Profile.** The same run under `bin/lpjml_timing`, whose per-function
+   summary reports min/max/avg across tasks -- which is what shows how far the
+   tasks still drift apart.
+
+Predicted from the land-use proxy before any of this was measured: the current
+equal-count split loads the heaviest of 30 tasks 1.50x above the mean, and
+balancing recovers essentially all of it.

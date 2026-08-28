@@ -27,6 +27,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, help="run directory to create")
     ap.add_argument("--base", default=PROD)
+    ap.add_argument("--old-prefix", dest="old_prefix", default=OLD_PREFIX,
+                    help="run directory the base config points at, rewritten to --out")
     ap.add_argument("--startgrid", default=None)
     ap.add_argument("--endgrid", default=None)
     ap.add_argument("--nspinup", type=int, default=None)
@@ -41,7 +43,7 @@ def main():
 
     cfg = json.load(open(args.base))
     run = os.path.abspath(args.out)
-    cfg = retarget(cfg, OLD_PREFIX, run)
+    cfg = retarget(cfg, args.old_prefix, run)
 
     if args.startgrid is not None:
         cfg["startgrid"] = int(args.startgrid) if args.startgrid != "all" else "all"
@@ -63,6 +65,7 @@ def main():
             if f.get("fmt") not in ("txt",):
                 f.pop("fmt", None)
     for kv in args.set:
+        # value is JSON so that strings, numbers, booleans and null all work
         k, v = kv.split("=", 1)
         cfg[k] = json.loads(v)
 
