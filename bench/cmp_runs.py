@@ -58,7 +58,8 @@ def cmp_netcdf(pa, pb):
             if name not in db.variables:
                 return "MISSING-VAR", name
             vb = db.variables[name]
-            if va.dtype.kind not in "fiu":          # char/string variables
+            kind = getattr(va.dtype, "kind", "S")   # str dtype => text variable
+            if kind not in "fiu":                   # char/string variables
                 if np.array_equal(np.asarray(va[:]), np.asarray(vb[:])):
                     continue
                 return "DIFFERS", f"{name}: non-numeric variable differs"

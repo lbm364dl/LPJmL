@@ -277,6 +277,8 @@ struct config
   int nall;      /**< total number of grid cells */
   int rank;      /**< my rank */
   int ntask;     /**< number of parallel tasks */
+  int *cellcounts;               /**< number of cells of each task. The one place
+                                      anything may ask how the grid was split */
   char *cellcost_filename;       /**< file with per-cell cost used to balance the
                                       decomposition, or NULL for equal cell counts */
   char *write_cellcost_filename; /**< measure per-cell cost and write it here, or NULL */
@@ -411,6 +413,7 @@ extern void createconfig(const Config *);
 extern Bool checkuniqoutput(int,int,const Config *);
 extern void closeconfig(LPJfile *);
 extern void divide_cells(int *,int *,int,int,const Real [],const Real []);
+extern void divide_counts(int,int,const Real [],const Real [],int []);
 extern Real *readcellcost(const char *,int,int,Verbosity);
 extern Bool writecellcost(const char *,const Real [],const Config *);
 extern Real *cellcost;

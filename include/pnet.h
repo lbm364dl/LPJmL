@@ -48,6 +48,8 @@ typedef struct
   int n;             /* total size of array */
   int lo;            /* lower bound of subarray */
   int hi;            /* upper bound of subarray */
+  int *bounds;       /* first index of each task, bounds[ntask]=n. The split
+                        the caller uses, so that pnet does not invent its own */
   int ntask;         /* number of tasks */
   int taskid;        /* my task identifier (0..ntask-1) */
   int outsize;       /* size of output buffer */
@@ -65,11 +67,14 @@ typedef struct
 
 #ifdef USE_MPI
 extern Pnet *pnet_init(MPI_Comm,MPI_Datatype,int);
+extern Pnet *pnet_init_bounds(MPI_Comm,MPI_Datatype,int,const int []);
 #else
 extern Pnet *pnet_init(int,int);
+extern Pnet *pnet_init_bounds(int,int,const int []);
 #endif
 extern Pnet *pnet_dup(const Pnet *);
 extern int pnet_setup(Pnet *);
+extern int pnet_sortconnect(Pnet *);
 extern int pnet_reverse(Pnet *);
 extern void pnet_free(Pnet *);
 extern int pnet_addconnect(Pnet *,int,int);

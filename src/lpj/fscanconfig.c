@@ -1208,14 +1208,23 @@ Bool fscanconfig(Config *config,    /**< LPJ configuration */
     }
     if(scanbalancing(file,config,verbose))
       return TRUE;
-    if(config->ntask>1) /* parallel mode? */
     {
       Real *cost;
       cost=(config->cellcost_filename==NULL) ? NULL :
            readcellcost(config->cellcost_filename,config->firstgrid,config->nall,
                         verbose);
-      divide_cells(&config->startgrid,&endgrid,config->rank,config->ntask,
-                   cost,config->task_weights);
+      /* Record how the grid is split for every task, not just this one. The
+         output gather, the routing network and the reservoir network all need
+         it, and each of them used to recompute the uniform split of its own
+         accord -- which silently disagrees with the model as soon as the split
+         is not uniform. */
+      config->cellcounts=newvec(int,config->ntask);
+      checkptr(config->cellcounts);
+      divide_counts(config->nall,config->ntask,cost,config->task_weights,
+                    config->cellcounts);
+      if(config->ntask>1) /* parallel mode? */
+        divide_cells(&config->startgrid,&endgrid,config->rank,config->ntask,
+                     cost,config->task_weights);
       free(cost);
     }
     config->ngridcell=endgrid-config->startgrid+1;

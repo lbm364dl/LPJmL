@@ -42,52 +42,29 @@
 
 Real *cellcost=NULL; /* per-cell cost measured during the run, or NULL */
 
-static void divide_equal(int *start,int *end,int rank,int ntask)
+static void bounds_equal(int n,int ntask,int bound[])
 {
   /* the historical split: the same number of cells for every task */
-  int i,lo,hi,n;
-  n=*end-*start+1;
-  lo=*start;
-  hi=*start+n/ntask-1;
-  if(n % ntask)
-    hi++;
-  for(i=1;i<=rank;i++)
-  {
-    lo=hi+1;
-    hi=lo+n/ntask-1;
-    if(n % ntask>i)
-      hi++;
-  }
-  *start=lo;
-  *end=hi;
-} /* of 'divide_equal' */
+  int r;
+  bound[0]=0;
+  for(r=0;r<ntask;r++)
+    bound[r+1]=bound[r]+n/ntask+((n % ntask>r) ? 1 : 0);
+} /* of 'bounds_equal' */
 
-void divide_cells(int *start,       /**< index of first grid cell, set to local first cell */
-                  int *end,         /**< index of last grid cell, set to local last cell */
-                  int rank,         /**< my rank id */
-                  int ntask,        /**< total number of tasks */
-                  const Real cost[],  /**< cost of cell *start+i, or NULL for equal counts */
-                  const Real weight[] /**< relative speed of each task, or NULL for equal */
-                 )
+static void bounds_cost(int n,int ntask,const Real cost[],const Real weight[],
+                        int bound[])
 {
-  int i,r,n,*bound;
+  /* place the ntask-1 interior boundaries on the cumulative cost curve */
+  int i,r;
   Real *prefix,*wsum,total,target;
-  n=*end-*start+1;
-  if(cost==NULL && weight==NULL)
-  {
-    divide_equal(start,end,rank,ntask);
-    return;
-  }
   prefix=newvec(Real,n);
   wsum=newvec(Real,ntask+1);
-  bound=newvec(int,ntask+1);
-  if(prefix==NULL || wsum==NULL || bound==NULL)
+  if(prefix==NULL || wsum==NULL)
   {
-    /* out of memory for a performance hint is not worth failing the run over */
+    /* running out of memory over a performance hint is not worth failing for */
     free(prefix);
     free(wsum);
-    free(bound);
-    divide_equal(start,end,rank,ntask);
+    bounds_equal(n,ntask,bound);
     return;
   }
   total=0;
@@ -101,8 +78,6 @@ void divide_cells(int *start,       /**< index of first grid cell, set to local 
   wsum[0]=0;
   for(r=0;r<ntask;r++)
     wsum[r+1]=wsum[r]+((weight!=NULL && weight[r]>0) ? weight[r] : 1.0);
-
-  /* place the ntask-1 interior boundaries on the cumulative cost curve */
   bound[0]=0;
   bound[ntask]=n;
   i=0;
@@ -119,11 +94,60 @@ void divide_cells(int *start,       /**< index of first grid cell, set to local 
       bound[r]=n-(ntask-r);
     i=bound[r];
   }
-  *end=*start+bound[rank+1]-1;
-  *start=*start+bound[rank];
   free(prefix);
   free(wsum);
+} /* of 'bounds_cost' */
+
+void divide_counts(int n,           /**< number of grid cells to distribute */
+                   int ntask,       /**< total number of tasks */
+                   const Real cost[],  /**< cost of cell i, or NULL for equal counts */
+                   const Real weight[],/**< relative speed of each task, or NULL */
+                   int counts[]     /**< number of cells of each task, filled in */
+                  )
+{
+  /*
+   * The one place the decomposition is decided.  Everything that needs to know
+   * how many cells a task holds -- the output gather, the routing network, the
+   * reservoir network -- has to ask here rather than recompute it, or it will
+   * disagree with the model the moment the split stops being uniform.
+   */
+  int r,*bound;
+  bound=newvec(int,ntask+1);
+  if(bound==NULL)
+  {
+    for(r=0;r<ntask;r++)
+      counts[r]=n/ntask+((n % ntask>r) ? 1 : 0);
+    return;
+  }
+  if(cost==NULL && weight==NULL)
+    bounds_equal(n,ntask,bound);
+  else
+    bounds_cost(n,ntask,cost,weight,bound);
+  for(r=0;r<ntask;r++)
+    counts[r]=bound[r+1]-bound[r];
   free(bound);
+} /* of 'divide_counts' */
+
+void divide_cells(int *start,       /**< index of first grid cell, set to local first cell */
+                  int *end,         /**< index of last grid cell, set to local last cell */
+                  int rank,         /**< my rank id */
+                  int ntask,        /**< total number of tasks */
+                  const Real cost[],  /**< cost of cell *start+i, or NULL for equal counts */
+                  const Real weight[] /**< relative speed of each task, or NULL for equal */
+                 )
+{
+  int r,n,lo,*counts;
+  n=*end-*start+1;
+  counts=newvec(int,ntask);
+  if(counts==NULL)
+    return;               /* leave the range alone rather than corrupt it */
+  divide_counts(n,ntask,cost,weight,counts);
+  lo=*start;
+  for(r=0;r<rank;r++)
+    lo+=counts[r];
+  *end=lo+counts[rank]-1;
+  *start=lo;
+  free(counts);
 } /* of 'divide_cells' */
 
 Real *readcellcost(const char *filename, /**< name of cell cost file */
@@ -185,77 +209,3 @@ Real *readcellcost(const char *filename, /**< name of cell cost file */
   fclose(file);
   return cost;
 } /* of 'readcellcost' */
-
-Bool writecellcost(const char *filename, /**< name of cell cost file to create */
-                   const Real cost[],    /**< cost of the local cells */
-                   const Config *config  /**< LPJmL configuration */
-                  )                      /** \return TRUE on error */
-{
-  FILE *file;
-  Real *all;
-  int version,first;
-  Bool rc;
-#ifdef USE_MPI
-  int *counts,*offsets,i;
-#endif
-  all=NULL;
-#ifdef USE_MPI
-  counts=newvec(int,config->ntask);
-  offsets=newvec(int,config->ntask);
-  if(counts==NULL || offsets==NULL)
-  {
-    free(counts);
-    free(offsets);
-    return TRUE;
-  }
-  MPI_Allgather((void *)&config->ngridcell,1,MPI_INT,counts,1,MPI_INT,config->comm);
-  offsets[0]=0;
-  for(i=1;i<config->ntask;i++)
-    offsets[i]=offsets[i-1]+counts[i-1];
-  if(isroot(*config))
-  {
-    all=newvec(Real,offsets[config->ntask-1]+counts[config->ntask-1]);
-    if(all==NULL)
-      printallocerr("cellcost");
-  }
-  MPI_Gatherv((void *)cost,config->ngridcell,MPI_DOUBLE,all,counts,offsets,
-              MPI_DOUBLE,0,config->comm);
-  free(counts);
-  free(offsets);
-#else
-  all=(Real *)cost;
-#endif
-  rc=FALSE;
-  if(isroot(*config) && all!=NULL)
-  {
-    file=fopen(filename,"wb");
-    if(file==NULL)
-    {
-      printfcreateerr(filename);
-      rc=TRUE;
-    }
-    else
-    {
-      version=CELLCOST_VERSION;
-      first=config->firstgrid;
-      if(fwrite(CELLCOST_HEADER,sizeof(CELLCOST_HEADER)-1,1,file)!=1 ||
-         fwrite(&version,sizeof(int),1,file)!=1 ||
-         fwrite(&first,sizeof(int),1,file)!=1 ||
-         fwrite(&config->nall,sizeof(int),1,file)!=1 ||
-         fwrite(all,sizeof(Real),config->nall,file)!=(size_t)config->nall)
-      {
-        fprintf(stderr,"ERROR153: Cannot write cell cost file '%s': %s\n",
-                filename,strerror(errno));
-        rc=TRUE;
-      }
-      else
-        printf("Cell cost written to '%s'.\n",filename);
-      fclose(file);
-    }
-  }
-#ifdef USE_MPI
-  free(all);
-  MPI_Bcast(&rc,1,MPI_INT,0,config->comm);
-#endif
-  return rc;
-} /* of 'writecellcost' */

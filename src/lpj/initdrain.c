@@ -68,7 +68,7 @@ static int *getindex(const Input_netcdf input,const Cell grid[],
     free(offsets);
     return NULL;
   }
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   for(cell=0;cell<config->ngridcell;cell++)
     vec[cell]=(int)getindexinput_netcdf(input,&grid[cell].coord);
   MPI_Gatherv(vec,config->ngridcell,MPI_INT,
@@ -142,11 +142,11 @@ static Bool initirrig(Cell grid[],    /**< Cell grid             */
   }
   /* initialize pnet structure for irrigation network */
 #ifdef USE_MPI
-  config->irrig_neighbour=pnet_init(config->comm,
+  config->irrig_neighbour=pnet_init_bounds(config->comm,
                                     (sizeof(Real)==sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT,
-                                    config->nall);
+                                    config->nall,config->cellcounts);
 #else
-  config->irrig_neighbour=pnet_init(sizeof(Real),config->nall);
+  config->irrig_neighbour=pnet_init_bounds(sizeof(Real),config->nall,config->cellcounts);
 #endif
   if(config->irrig_neighbour==NULL)
   {
@@ -273,11 +273,11 @@ static Bool initriver(Cell grid[],Config *config)
   }
   /* initialize pnet structure for drainage network */
 #ifdef USE_MPI
-  config->route=pnet_init(config->comm,
+  config->route=pnet_init_bounds(config->comm,
                           (sizeof(Real)==sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT,
-                          config->nall);
+                          config->nall,config->cellcounts);
 #else
-  config->route=pnet_init(sizeof(Real),config->nall);
+  config->route=pnet_init_bounds(sizeof(Real),config->nall,config->cellcounts);
 #endif
 
   if(config->route==NULL)
@@ -432,12 +432,17 @@ Bool initdrain(Cell grid[],    /**< Cell grid             */
     if(iserror(initirrig(grid,config),config))
       return TRUE; 
     pnet_reverse(config->irrig_neighbour);
+    pnet_sortconnect(config->irrig_neighbour);
     pnet_setup(config->irrig_neighbour);
+    pnet_sortconnect(config->irrig_back);
     pnet_setup(config->irrig_back);
   }
   if(iserror(initriver(grid,config),config))
     return TRUE;
   pnet_reverse(config->route);
+  /* fix the order the inflows of a cell are summed in, so that discharge does
+     not depend on how the grid happens to be split over the tasks */
+  pnet_sortconnect(config->route);
   pnet_setup(config->route);
   return FALSE;
 } /* of 'initdrain' */

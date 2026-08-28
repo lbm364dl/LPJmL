@@ -321,7 +321,7 @@ static Bool writealldata(Outputfile *output,int index,float data[],int year,int 
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   if(output->files[index].isopen)
     switch(output->files[index].fmt)
     {

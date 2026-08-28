@@ -42,41 +42,16 @@ static int compare(const void *a,const void *b)
 int pnet_setup(Pnet *pnet /**< Pointer to Pnet structure */
               )           /** \return error code        */
 {
-  int *lo,*hi;
-  int i,j,k,*index,*in,size,slice,rem,task,insize;
+  const int *lo_bound;
+  int i,j,k,*index,*in,size,task,insize;
 #ifdef USE_MPI
   MPI_Aint lb;
   MPI_Aint extent;
 #endif
   if(pnet==NULL)
     return PNET_NULL_PTR_ERR;
-  slice=pnet->n/pnet->ntask;
-  rem=pnet->n % pnet->ntask;
-  lo=newvec(int,pnet->ntask);
-  if(lo==NULL)
-    return PNET_ALLOC_ERR;
-  hi=newvec(int,pnet->ntask);
-  if(hi==NULL)
-  {
-    free(lo);
-    return PNET_ALLOC_ERR;
-  }
-  /* calculate lower and upper bounds for all tasks */
-  for(i=0;i<pnet->ntask;i++)
-  {
-    lo[i]=i*slice;
-    hi[i]=(i+1)*slice-1;
-    if(i<rem)
-    {
-       lo[i]+=i;
-       hi[i]+=i+1;
-    }
-    else
-    {
-      lo[i]+=rem;
-      hi[i]+=rem;
-    }
-  }
+  /* the bounds of every task, as the caller set them in pnet_init_bounds() */
+  lo_bound=pnet->bounds;
   for(i=0;i<pnet->ntask;i++)
     pnet->outlen[i]=pnet->inlen[i]=0;
   /* determine total length of connection lists */
@@ -87,8 +62,6 @@ int pnet_setup(Pnet *pnet /**< Pointer to Pnet structure */
   if(in==NULL)
   {
     /* error allocating memory, exit with error code */
-    free(lo);
-    free(hi);
     pnet->outindex=NULL;
     pnet->inbuffer=pnet->outbuffer=NULL;
     return PNET_ALLOC_ERR;
@@ -116,7 +89,7 @@ int pnet_setup(Pnet *pnet /**< Pointer to Pnet structure */
     pnet->inlen[task]=0;
     i=0;
     while(i<insize)
-      if(in[i]<=hi[task])
+      if(in[i]<=lo_bound[task+1]-1)
       {
         /* in[i] is within lower and upper bound of task */
         pnet->inlen[task]++;
@@ -177,8 +150,6 @@ int pnet_setup(Pnet *pnet /**< Pointer to Pnet structure */
   pnet->outindex=newvec(int,pnet->outsize);
   if(pnet->outindex==NULL)
   {
-    free(lo);
-    free(hi);
     free(in);
     pnet->inbuffer=pnet->outbuffer=NULL;
     return PNET_ALLOC_ERR;
@@ -215,7 +186,5 @@ int pnet_setup(Pnet *pnet /**< Pointer to Pnet structure */
   pnet->inbuffer=malloc(pnet->size*insize);
 #endif
   free(in);
-  free(lo);
-  free(hi);
   return (pnet->outbuffer==NULL || pnet->inbuffer==NULL) ? PNET_ALLOC_ERR : PNET_OK;
 } /* of 'pnet_setup' */

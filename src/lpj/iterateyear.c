@@ -17,6 +17,11 @@
 
 #include "lpj.h"
 
+#ifdef TRACE_DAILY
+extern void trace_day(const Cell [],int,int,const char *,const Config *);
+extern void trace_annual(const Cell [],int,const char *,const Config *);
+#endif
+
 Bool iterateyear(Outputfile *output,  /**< Output file data */
                  Cell grid[],         /**< cell array */
                  Input *input,        /**< input data */
@@ -34,8 +39,14 @@ Bool iterateyear(Outputfile *output,  /**< Output file data */
   int month,dayofmonth,day;
   int cell;
   intercrop=getintercrop(input->landuse);
+#ifdef TRACE_DAILY
+  trace_annual(grid,year,"yearin",config);
+#endif
   if(setupannual_grid(output,grid,input,year,npft,ncft,intercrop,config))
     return TRUE;
+#ifdef TRACE_DAILY
+  trace_annual(grid,year,"setup",config);
+#endif
   day=1;
   foreachmonth(month)
   {
@@ -59,11 +70,23 @@ Bool iterateyear(Outputfile *output,  /**< Output file data */
                             npft,ncft,intercrop,config);
           cellcost[cell]+=mrun()-tcell;
         }
+#ifdef TRACE_DAILY
+      trace_day(grid,day,year,"cells",config);
+#endif
       updatedaily_grid(output,grid,input->extflow,day,month,year,npft,ncft,config);
+#ifdef TRACE_DAILY
+      trace_day(grid,day,year,"routed",config);
+#endif
       day++;
     } /* of 'foreachdayofmonth */
     update_monthly_grid(output,grid,input->climate,month,year,npft,ncft,config);
   } /* of 'foreachmonth */
+#ifdef TRACE_DAILY
+  trace_annual(grid,year,"preann",config);
+#endif
   updateannual_grid(output,grid,input->landcover,co2,ch4,pch4,year,npft,ncft,intercrop,daily.isdailytemp,config);
+#ifdef TRACE_DAILY
+  trace_annual(grid,year,"postann",config);
+#endif
   return FALSE;
 } /* of 'iterateyear' */

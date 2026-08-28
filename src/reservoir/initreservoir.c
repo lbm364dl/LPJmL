@@ -237,7 +237,7 @@ Bool initreservoir(Cell grid[],   /**< LPJ grid */
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,2,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,2,config->ntask);
 #endif
   recv=newvec(Item,config->nall);
   check(recv);
@@ -264,11 +264,11 @@ Bool initreservoir(Cell grid[],   /**< LPJ grid */
       addintlistitem(back+recv[cell].next-config->firstgrid,cell);
   initintlist(&list);
 #ifdef USE_MPI
-  config->irrig_res=pnet_init(config->comm,
+  config->irrig_res=pnet_init_bounds(config->comm,
                                    (sizeof(Real)==sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT,
-                                   config->nall);
+                                   config->nall,config->cellcounts);
 #else
-  config->irrig_res=pnet_init(sizeof(Real),config->nall);
+  config->irrig_res=pnet_init_bounds(sizeof(Real),config->nall,config->cellcounts);
 #endif
   visit=newvec(Bool,config->nall);
   check(visit);
@@ -322,6 +322,8 @@ Bool initreservoir(Cell grid[],   /**< LPJ grid */
     }
   config->irrig_res_back=pnet_dup(config->irrig_res);
   pnet_reverse(config->irrig_res_back);
+  pnet_sortconnect(config->irrig_res);
+  pnet_sortconnect(config->irrig_res_back);
   pnet_setup(config->irrig_res);
   pnet_setup(config->irrig_res_back);
   for(cell=0;cell<config->ngridcell;cell++)

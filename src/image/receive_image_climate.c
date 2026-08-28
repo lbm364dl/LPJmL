@@ -56,7 +56,7 @@ Bool receive_image_climate(Climate *climate,    /**< Climate data */
   offsets=newvec(int,config->ntask);
   check(offsets);
   n=(isdaily(climate->file_temp)) ? NDAYYEAR : NMONTH;
-  getcounts(counts,offsets,config->nall,n,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,n,config->ntask);
   mpi_read_socket(config->in,image_data,MPI_FLOAT,n*config->nall,counts,
                  offsets,config->rank,config->comm);
 #else

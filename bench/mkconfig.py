@@ -8,7 +8,10 @@ measure is the same code path the real run takes.
 """
 import json, os, sys, argparse
 
-PROD = "/home/usuario/lpjml_rerun_2026-08/preserved_predecessor_lpjml611/config_scenario_1.json"
+# The 71-output production config as it stands on the current master.  The
+# original in lpjml_rerun_2026-08 predates two merged PRs that added 13 output
+# variables, so LPJmL rejects its 384-entry outputvar table against NOUT=397.
+PROD = "/home/usuario/lpjml_perf_runs/config_prod_397.json"
 OLD_PREFIX = "/home/usuario/LPJmL-611/global_1901-2023_spinup_300_611"
 
 

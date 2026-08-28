@@ -81,7 +81,7 @@ Bool receive_coupler(int index,           /**< index of input file */
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,size,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,size,config->ntask);
   if(mpi_read_socket(config->socket,data,mpi_types[type],config->nall*size,
                      counts,offsets,config->rank,config->comm))
   {
