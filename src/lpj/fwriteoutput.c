@@ -612,6 +612,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
         svec[count++]=(short)(grid[cell].ml.seasonality_type);
     writeshortdata(output,SEASONALITY,svec,year,date,ndata,config);
     free(svec);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,SEASONALITY);
   }
   vec=newvec(float,config->ngridcell);
   check(vec);
@@ -695,6 +697,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_WOOD_AGR,config));
     writedata(output,DECAY_WOOD_AGR,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_WOOD_AGR);
   }
   if(iswrite(output,DECAY_WOOD_NV))
   {
@@ -703,6 +707,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_WOOD_NV,config));
     writedata(output,DECAY_WOOD_NV,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_WOOD_NV);
   }
   if(iswrite(output,DECAY_LEAF_AGR))
   {
@@ -711,6 +717,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_LEAF_AGR,config));
     writedata(output,DECAY_LEAF_AGR,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_LEAF_AGR);
   }
   if(iswrite(output,DECAY_LEAF_NV))
   {
@@ -719,6 +727,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_LEAF_NV,config));
     writedata(output,DECAY_LEAF_NV,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_LEAF_NV);
   }
   writeoutputvar(LITBURNC,1);
   writeoutputvar(LITBURNC_WOOD,1);
@@ -1159,6 +1169,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
          vec[count++]=(float)(grid[cell].balance.awd_unsustainable/((grid[cell].balance.airrig+
             grid[cell].balance.aconv_loss_evap + grid[cell].balance.aconv_loss_drain)*grid[cell].coord.area));
     writedata(output,AFRAC_WD_UNSUST,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,AFRAC_WD_UNSUST);
   }
   writeoutputvar(WATERUSE_HIL,1);
   writeoutputvar(WATERUSECONS,1);
@@ -1466,6 +1478,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
         }
       writepft(output,PFT_GCGP,vec,year,date,ndata,i,config);
     }
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,PFT_GCGP);
   }
   writeoutputarray(PFT_HARVESTC,1);
   writeoutputarray(PFT_HARVESTN,1);
