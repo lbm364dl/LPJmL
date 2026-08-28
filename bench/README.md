@@ -187,8 +187,21 @@ hardware threads with retuned weights:
 | equal cell count, 24 ranks unpinned | 546 s | — |
 | split by cost, 32 threads pinned, weights retuned twice | **324 s** | **1.69x** |
 
-0.0019 -> 0.0011 sec/cell/year. Against the 41,234 s production run that is
-about 11.5 h -> 6.8 h. Every step verified byte-identical.
+0.0019 -> 0.0011 sec/cell/year.
+
+With the full 71-output production set rather than the five-output recover
+config, which is the load the real run carries:
+
+| configuration | simulation | speedup |
+| --- | --- | --- |
+| equal cell count, 24 ranks unpinned | 579 s | — |
+| split by cost, 32 threads pinned, weights retuned | **338 s** | **1.71x** |
+
+70/70 output files identical. Against the 41,234 s production run that is
+about **11.5 h -> 6.7 h**. Every step verified byte-identical.
+
+The output set costs about 6% on a five-year run (579 s against 546 s for five
+outputs), so the gather through the root task is real but not what limits it.
 
 The cost file predicted 1.79x, and the gap is expected: 1.79x was the ceiling
 for `update_daily_cell` alone, while river routing, output collection and the
@@ -235,13 +248,21 @@ confounded with core speed:
 
 Eight ranks land on the eight P-cores. It takes about three minutes.
 
+`-fno-math-errno` is now in `config/Makefile.gcc` and `config/Makefile.mpich`,
+so `configure.sh` picks it up.
+
 **Then**, in every run:
 
     "cellcost_filename": "/path/to/cost.bin",
     "task_weights": [1,1,1,1,1,1,1,1, 0.61,0.61,0.61,0.61,0.61,0.61,0.61,0.61,
                      0.61,0.61,0.61,0.61,0.61,0.61,0.61,0.61]
 
-    mpirun -np 24 --bind-to core --map-by core ./bin/lpjml config.json
+    mpirun -np 32 --use-hwthread-cpus --bind-to hwthread --map-by hwthread \
+        ./bin/lpjml config.json
+
+Ranks 0-15 land two to a P-core and 16-31 one to an E-core. Start from the
+isolated core speeds, then retune from a measured run (below) -- two iterations
+is enough.
 
 The weights are the relative speed of the core each rank is pinned to. With
 `--bind-to core --map-by core` rank r goes to core r, and on this machine cores

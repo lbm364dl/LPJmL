@@ -18,7 +18,11 @@ DEBUGFLAGS= -g
 CHECKFLAGS = -fsanitize=address -fsanitize=bounds -fsanitize=undefined
 WFLAG = -Wall
 LPJFLAGS= -DSAFE -DUSE_RAND48 -DWITH_FPE -DUSE_NETCDF -DUSE_UDUNITS -DPERMUTE -DSTRICT_JSON # -DDAILY_ESTABLISHMENT
-OPTFLAGS  = -O2
+# -fno-math-errno lets the compiler treat the libm calls as the pure
+# functions they are. It does not change any computed value -- only whether
+# errno is set -- and it is what allows dead and duplicated calls to be
+# removed. Verified byte-identical on a full-grid run.
+OPTFLAGS  = -O2 -fno-math-errno
 O	= o
 A	= a
 E	=
