@@ -46,8 +46,16 @@ void phenology_grass(Pft *pft,  /**< pointer to PFT variables */
     grass->turn_litt.leaf.nitrogen+=grass->ind.leaf.nitrogen*grasspar->turnover.leaf/NDAYYEAR*pft->nind;
     pft->stand->soil.litter.item[pft->litter].agtop.leaf.carbon+=grass->ind.leaf.carbon*grasspar->turnover.leaf/NDAYYEAR*pft->nind;
     getoutput(output,LITFALLC,config)+=grass->ind.leaf.carbon*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.leaf.carbon*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=grass->ind.leaf.carbon*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->stand->frac;
     pft->stand->soil.litter.item[pft->litter].agtop.leaf.nitrogen+=grass->ind.leaf.nitrogen*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=grass->ind.leaf.nitrogen*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.leaf.nitrogen*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=grass->ind.leaf.nitrogen*grasspar->turnover.leaf/NDAYYEAR*pft->nind*pft->par->fn_turnover*pft->stand->frac;
     pft->bm_inc.nitrogen+=grass->ind.leaf.nitrogen*grasspar->turnover.leaf/NDAYYEAR*pft->nind*(1-pft->par->fn_turnover);
     update_fbd_grass(&pft->stand->soil.litter,pft->par->fuelbulkdensity,grass->ind.leaf.carbon*grasspar->turnover.leaf/NDAYYEAR*pft->nind);
   }

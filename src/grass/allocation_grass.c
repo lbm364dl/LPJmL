@@ -129,6 +129,10 @@ Bool allocation_grass(Litter *litter,   /**< litter pool */
         {
           litter->item[pft->litter].agtop.leaf.carbon-=inc_ind.leaf.carbon*pft->nind;
           getoutput(output,LITFALLC,config)-=inc_ind.leaf.carbon*pft->nind*pft->stand->frac;
+          if(getlandusetype(pft->stand)==GRASSLAND)
+            getoutput(output,LITFALLC_MGRASS,config)-=inc_ind.leaf.carbon*pft->nind*pft->stand->frac;
+          if(isnatural(pft->stand))
+            getoutput(output,LITFALLC_NV,config)-=inc_ind.leaf.carbon*pft->nind*pft->stand->frac;
         }
         else
           getoutput(output,FLUX_ESTABC,config)+=inc_ind.leaf.carbon*pft->nind*pft->stand->frac;

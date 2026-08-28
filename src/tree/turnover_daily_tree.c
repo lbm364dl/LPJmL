@@ -37,8 +37,16 @@ static void f_turnover_tree(Pft *pft,       /**< pointer to tree PFT */
   tree->turn_litt.leaf.nitrogen+=tree->ind.leaf.nitrogen*treepar->turnover.leaf*factor*pft->nind;
   pft->stand->soil.litter.item[pft->litter].agtop.leaf.carbon+=tree->ind.leaf.carbon*treepar->turnover.leaf*factor*pft->nind;
   getoutput(&pft->stand->cell->output,LITFALLC,config)+=tree->ind.leaf.carbon*treepar->turnover.leaf*factor*pft->nind*pft->stand->frac;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(&pft->stand->cell->output,LITFALLC_MGRASS,config)+=tree->ind.leaf.carbon*treepar->turnover.leaf*factor*pft->nind*pft->stand->frac;
+  if(isnatural(pft->stand))
+    getoutput(&pft->stand->cell->output,LITFALLC_NV,config)+=tree->ind.leaf.carbon*treepar->turnover.leaf*factor*pft->nind*pft->stand->frac;
   pft->stand->soil.litter.item[pft->litter].agtop.leaf.nitrogen+=tree->ind.leaf.nitrogen*treepar->turnover.leaf*factor*pft->nind*pft->par->fn_turnover;
   getoutput(&pft->stand->cell->output,LITFALLN,config)+=tree->ind.leaf.nitrogen*treepar->turnover.leaf*factor*pft->nind*pft->stand->frac*pft->par->fn_turnover;
+  if(getlandusetype(pft->stand)==GRASSLAND)
+    getoutput(&pft->stand->cell->output,LITFALLN_MGRASS,config)+=tree->ind.leaf.nitrogen*treepar->turnover.leaf*factor*pft->nind*pft->stand->frac*pft->par->fn_turnover;
+  if(isnatural(pft->stand))
+    getoutput(&pft->stand->cell->output,LITFALLN_NV,config)+=tree->ind.leaf.nitrogen*treepar->turnover.leaf*factor*pft->nind*pft->stand->frac*pft->par->fn_turnover;
 
 #ifdef NRECOVERY_COST
   nplant_demand=ndemand(pft,&ndemand_leaf,pft->vmax,temp)*(1+pft->par->knstore);

@@ -612,6 +612,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
         svec[count++]=(short)(grid[cell].ml.seasonality_type);
     writeshortdata(output,SEASONALITY,svec,year,date,ndata,config);
     free(svec);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,SEASONALITY);
   }
   vec=newvec(float,config->ngridcell);
   check(vec);
@@ -649,6 +651,13 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
   writeoutputvar(N2O_NIT_AGR,1);
   writeoutputvar(NH3_AGR,1);
   writeoutputvar(N2_AGR,1);
+  writeoutputvar(LITFALLC_AGR,1);
+  writeoutputvar(LITFALLC_NV,1);
+  writeoutputvar(LITFALLC_LUC,1);
+  writeoutputvar(LITFALLN_NV,1);
+  writeoutputvar(LITFALLN_LUC,1);
+  writeoutputvar(LITFALLC_MGRASS,1);
+  writeoutputvar(LITFALLN_MGRASS,1);
   writeoutputvar(LITFALLN_AGR,1);
   writeoutputvar(HARVESTC_AGR,1);
   writeoutputvar(HARVESTN_AGR,1);
@@ -687,7 +696,9 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_WOOD_AGR,config));
-    writedata(output,DECAY_WOOD_AGR,vec,year,date,0,config);
+    writedata(output,DECAY_WOOD_AGR,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_WOOD_AGR);
   }
   if(iswrite(output,DECAY_WOOD_NV))
   {
@@ -695,7 +706,9 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_WOOD_NV,config));
-    writedata(output,DECAY_WOOD_NV,vec,year,date,0,config);
+    writedata(output,DECAY_WOOD_NV,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_WOOD_NV);
   }
   if(iswrite(output,DECAY_LEAF_AGR))
   {
@@ -703,7 +716,9 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_LEAF_AGR,config));
-    writedata(output,DECAY_LEAF_AGR,vec,year,date,0,config);
+    writedata(output,DECAY_LEAF_AGR,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_LEAF_AGR);
   }
   if(iswrite(output,DECAY_LEAF_NV))
   {
@@ -711,7 +726,9 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
     for(cell=0;cell<config->ngridcell;cell++)\
       if(!grid[cell].skip)
         vec[count++]=(float)(1-getoutput(&grid[cell].output,DECAY_LEAF_NV,config));
-    writedata(output,DECAY_LEAF_NV,vec,year,date,0,config);
+    writedata(output,DECAY_LEAF_NV,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,DECAY_LEAF_NV);
   }
   writeoutputvar(LITBURNC,1);
   writeoutputvar(LITBURNC_WOOD,1);
@@ -1152,6 +1169,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
          vec[count++]=(float)(grid[cell].balance.awd_unsustainable/((grid[cell].balance.airrig+
             grid[cell].balance.aconv_loss_evap + grid[cell].balance.aconv_loss_drain)*grid[cell].coord.area));
     writedata(output,AFRAC_WD_UNSUST,vec,year,date,ndata,config);
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,AFRAC_WD_UNSUST);
   }
   writeoutputvar(WATERUSE_HIL,1);
   writeoutputvar(WATERUSECONS,1);
@@ -1459,6 +1478,8 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
         }
       writepft(output,PFT_GCGP,vec,year,date,ndata,i,config);
     }
+    if(isroot(*config) && config->flush_output)
+      flush_output(output,PFT_GCGP);
   }
   writeoutputarray(PFT_HARVESTC,1);
   writeoutputarray(PFT_HARVESTN,1);
@@ -1597,6 +1618,7 @@ Bool fwriteoutput(Outputfile *output,  /**< output file array */
   writeoutputarray(CFTFRAC,1);
   writeoutputarray(CFT_NHARVEST,1);
   writeoutputarray(CFT_AIRRIG,1);
+  writeoutputarray(CFT_AIRRIG_MONTH,1);
   writeoutputarray(CFT_FPAR,ndate1);
   writeoutputarray(LUC_IMAGE,1);
   writeoutputarray(CFT_NFERT,1);

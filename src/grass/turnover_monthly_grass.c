@@ -31,8 +31,16 @@ void turnover_monthly_grass(Litter *litter,Pft *pft,const Config *config)
     grass->turn_litt.root.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NMONTH*pft->nind;
     litter->item[pft->litter].bg.carbon+=grass->ind.root.carbon*grasspar->turnover.root/NMONTH*pft->nind;
     getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*grasspar->turnover.root/NMONTH*pft->nind*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*grasspar->turnover.root/NMONTH*pft->nind*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*grasspar->turnover.root/NMONTH*pft->nind*pft->stand->frac;
     litter->item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NMONTH*pft->nind*pft->par->fn_turnover;
     getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NMONTH*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(getlandusetype(pft->stand)==GRASSLAND)
+      getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NMONTH*pft->nind*pft->par->fn_turnover*pft->stand->frac;
+    if(isnatural(pft->stand))
+      getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NMONTH*pft->nind*pft->par->fn_turnover*pft->stand->frac;
     pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NMONTH*pft->nind*(1-pft->par->fn_turnover);
   }
 } /* of 'turnover_monthly_grass' */

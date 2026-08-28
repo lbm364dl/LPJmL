@@ -32,6 +32,8 @@ void remove_vegetation_copy(Soil *soil, /* soil pointer */
   Stocks harvest;
   Stocks stocks={0,0};
   Stocks trad_biofuel;
+  Real litfall_nv_c0=0,litfall_nv_n0=0;
+  Bool split_c,split_n;
   if(usefrac)
     sfrac=standfrac;
 #if defined IMAGE && defined COUPLED
@@ -46,6 +48,33 @@ void remove_vegetation_copy(Soil *soil, /* soil pointer */
   frac.fast=param.harvest_fast_frac; /* 76% of cut trees is harvested and 26% of harvested wood into fast pools, so 34% of harvested wood goes to fast pools */
   frac.slow=1-param.harvest_fast_frac; /* 50% of all cut trees go to slow, that is 66% of all harvested (76%) */
 #endif
+
+  /* Separate the land-use-conversion litterfall pulse from standing natural
+     litterfall. This is done by bracketing rather than by tagging each of the
+     52 LITFALLC sites, because this function is the ONLY path that credits
+     litterfall while the source stand is still natural: its two callers,
+     reclaim_land() and the wetland->mixstand case at landusechange.c:701, are
+     both conversion, while cutpfts() and annual_setaside() only ever run on
+     non-natural stands. So whatever the loop below adds to LITFALLC_NV is the
+     conversion pulse; it is moved to LITFALLC_LUC afterwards. Exact by
+     construction, and a no-op when `stand` is not natural (nothing is added).
+
+     Booking the pulse as natural would credit a class that is shrinking in
+     that very year, and the residues physically enter the receiving stand's
+     soil -- see the WHEP answers of 2026-08-25, section 2.
+
+     Guarded on the accumulator owning real storage: every INACTIVE output
+     aliases slot 0 (initoutput.c:69, "no output used, point to trash"), so a
+     delta taken across an inactive LITFALLC_NV would pick up every other
+     inactive output written in between. An active output can only map to 0 as
+     the first of them, and the map is filled from i=FPC upward, so id 390
+     mapping to 0 always means inactive. */
+  split_c=(config->outputmap[LITFALLC_NV]!=0);
+  split_n=(config->outputmap[LITFALLN_NV]!=0);
+  if(split_c)
+    litfall_nv_c0=getoutput(&cell->output,LITFALLC_NV,config);
+  if(split_n)
+    litfall_nv_n0=getoutput(&cell->output,LITFALLN_NV,config);
 
   foreachpft(pft,p,&stand->pftlist)
   {
@@ -169,6 +198,16 @@ void remove_vegetation_copy(Soil *soil, /* soil pointer */
     }
 #endif
   } /* of foreachpft */
+  if(split_c)
+  {
+    getoutput(&cell->output,LITFALLC_LUC,config)+=getoutput(&cell->output,LITFALLC_NV,config)-litfall_nv_c0;
+    getoutput(&cell->output,LITFALLC_NV,config)=litfall_nv_c0;
+  }
+  if(split_n)
+  {
+    getoutput(&cell->output,LITFALLN_LUC,config)+=getoutput(&cell->output,LITFALLN_NV,config)-litfall_nv_n0;
+    getoutput(&cell->output,LITFALLN_NV,config)=litfall_nv_n0;
+  }
 #if defined IMAGE && defined COUPLED
   if(tharvest)
     cell->ml.image_data->timber_frac-=ftimber*standfrac;

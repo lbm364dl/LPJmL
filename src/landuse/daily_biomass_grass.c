@@ -151,9 +151,15 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
       }
 #endif
       if(config->pft_output_scaled)
-        getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply*stand->frac;
+        {
+          getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply*stand->frac;
+          getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply*stand->frac;
+        }
       else
-        getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply;
+        {
+          getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply;
+          getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply;
+        }
     }
   }
 
@@ -272,11 +278,19 @@ Real daily_biomass_grass(Stand *stand,                /**< stand pointer */
           grass->turn.root.carbon+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR;
           stand->soil.litter.item[pft->litter].bg.carbon+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR*pft->nind;
           getoutput(output,LITFALLC,config)+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR*pft->nind*stand->frac;
+          if(getlandusetype(pft->stand)==GRASSLAND)
+            getoutput(output,LITFALLC_MGRASS,config)+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR*pft->nind*stand->frac;
+          if(isnatural(pft->stand))
+            getoutput(output,LITFALLC_NV,config)+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR*pft->nind*stand->frac;
           grass->turn_litt.root.carbon+=grass->ind.root.carbon*grasspar->turnover.root/NDAYYEAR*pft->nind;
           grass->turn.root.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR;
           stand->soil.litter.item[pft->litter].bg.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*pft->par->fn_turnover;
           pft->bm_inc.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*(1-pft->par->fn_turnover);
           getoutput(output,LITFALLN,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*pft->par->fn_turnover*stand->frac;
+          if(getlandusetype(pft->stand)==GRASSLAND)
+            getoutput(output,LITFALLN_MGRASS,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*pft->par->fn_turnover*stand->frac;
+          if(isnatural(pft->stand))
+            getoutput(output,LITFALLN_NV,config)+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind*pft->par->fn_turnover*stand->frac;
           grass->turn_litt.root.nitrogen+=grass->ind.root.nitrogen*grasspar->turnover.root/NDAYYEAR*pft->nind;
           grass->growing_days++;
           fpc_inc[p]=0;

@@ -121,9 +121,15 @@ Real daily_woodplantation(Stand *stand,       /**< stand pointer */
       }
 #endif
       if (config->pft_output_scaled)
-        getoutputindex(&stand->cell->output,CFT_AIRRIG,index,config) += irrig_apply*stand->frac;
+        {
+          getoutputindex(&stand->cell->output,CFT_AIRRIG,index,config) += irrig_apply*stand->frac;
+          getoutputindex(&stand->cell->output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply*stand->frac;
+        }
       else
-        getoutputindex(&stand->cell->output,CFT_AIRRIG,index,config) += irrig_apply;
+        {
+          getoutputindex(&stand->cell->output,CFT_AIRRIG,index,config) += irrig_apply;
+          getoutputindex(&stand->cell->output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply;
+        }
     }
   }
 
