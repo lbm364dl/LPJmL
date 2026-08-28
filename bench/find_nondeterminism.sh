@@ -58,7 +58,6 @@ reproduce)
     cd "$RUN" || exit 1
     n=${2:-8}
     out=$(for i in $(seq "$n"); do
-            rm -f output/scenario_1/*
             mpirun -np 4 /tmp/lpjml_nd "$CFG" 2>/dev/null |
                 grep -a '^TRACE 1901   1 cells' | awk '{print $5}'
           done)
@@ -69,7 +68,6 @@ valgrind)
     command -v valgrind >/dev/null || { echo "valgrind is not installed" >&2; exit 1; }
     build "-O1 -g" /tmp/lpjml_nd
     cd "$RUN" || exit 1
-    rm -f output/scenario_1/*
     # one rank, so valgrind sees the model and not the MPI runtime
     valgrind --tool=memcheck --track-origins=yes --error-limit=no \
              --num-callers=25 --log-file=/tmp/vg.log \
@@ -84,7 +82,6 @@ valgrind)
 asan)
     build "-O1 -g -fsanitize=address" /tmp/lpjml_nd
     cd "$RUN" || exit 1
-    rm -f output/scenario_1/*
     ASAN_OPTIONS=detect_leaks=0:halt_on_error=0 \
         mpirun -np 1 /tmp/lpjml_nd "$CFG" >/dev/null 2>/tmp/asan.log
     echo "AddressSanitizer errors: $(grep -ac 'ERROR: AddressSanitizer' /tmp/asan.log)"
