@@ -6,13 +6,13 @@ restart file it also localises any difference, so a mismatch confined to the
 metadata header (version string, git hash, wall-clock timestamp) is not
 mistaken for a change in the model state.
 
-Usage: cmp_runs.py <run_a> <run_b> [--header-bytes 4096]
+Usage: cmp_runs.py <run_a> <run_b> [--header-bytes 65536]
 """
 import argparse, os, sys
 
 import numpy as np
 
-HEADER_DEFAULT = 4096
+HEADER_DEFAULT = 65536   # the bstruct header runs to ~9 kB: metadata plus the variable index
 
 
 def diff_ranges(a, b, limit=8):
@@ -27,27 +27,50 @@ def diff_ranges(a, b, limit=8):
     return [(int(g[0]), int(g[-1])) for g in groups[:limit]], int(idx.size)
 
 
+def common_suffix(a, b):
+    """Length of the longest common suffix of two byte strings."""
+    lo, hi = 0, min(len(a), len(b))
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if a[len(a) - mid:] == b[len(b) - mid:]:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo
+
+
 def cmp_restart(pa, pb, header_bytes):
     if not (os.path.exists(pa) or os.path.exists(pb)):
         return "restart", "IDENTICAL*", "neither run wrote a restart file"
     if not (os.path.exists(pa) and os.path.exists(pb)):
         return "restart", "MISSING", "only one run wrote a restart file"
-    sa, sb = os.path.getsize(pa), os.path.getsize(pb)
-    if sa != sb:
-        return "restart", "SIZE-DIFF", f"{sa} vs {sb}"
     a = open(pa, "rb").read()
     b = open(pb, "rb").read()
     if a == b:
-        return "restart", "IDENTICAL", f"{sa/1e6:.0f} MB, byte-for-byte"
+        return "restart", "IDENTICAL", f"{len(a)/1e6:.0f} MB, byte-for-byte"
+    # The bstruct header carries a timestamp, the command line that produced
+    # the file and the git hash of the binary, followed by an index whose
+    # offsets all shift when any of those change length.  A difference
+    # confined to it says nothing about the model, so the payload is compared
+    # by aligning the two files at their ends rather than their starts --
+    # otherwise a one-character difference in a run directory name reads as a
+    # total mismatch.
+    suf = common_suffix(a, b)
+    ha, hb = len(a) - suf, len(b) - suf
+    if max(ha, hb) <= header_bytes:
+        return "restart", "IDENTICAL*", (
+            f"{suf/1e6:.0f} MB of model state byte-for-byte; only the "
+            f"{ha}-byte metadata header differs (timestamp, command line, "
+            f"git hash)")
+    if len(a) != len(b):
+        return "restart", "SIZE-DIFF", (
+            f"{len(a)} vs {len(b)}; the last {suf/1e6:.1f} MB agree, so the "
+            f"difference reaches {ha} bytes in, past the header")
     ranges, count = diff_ranges(a, b)
     last = max(r[1] for r in ranges)
-    if last < header_bytes and count < header_bytes:
-        return "restart", "IDENTICAL*", (
-            f"{count} differing bytes, all in the metadata header "
-            f"(<{header_bytes}); model state identical")
     return "restart", "DIFFERS", (
         f"{count} differing bytes, first at {ranges[0][0]}, "
-        f"last at {last} of {sa}")
+        f"last at {last} of {len(a)}")
 
 
 def cmp_netcdf(pa, pb):
