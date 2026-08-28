@@ -24,8 +24,14 @@ LOG=$RUNS/suite.log
 mkdir -p "$RUNS"
 say() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 
+# Match the executable name, not the command line. Log paths, monitor loops and
+# other sessions' shell wrappers all mention lpjml and would block this forever;
+# one such monitor is what kept the first attempt waiting through an idle hour.
+# Our own runs go through /tmp/lpjml_bench_bin, so they carry a different name.
+lpjml_running() { pgrep -x lpjml >/dev/null || pgrep -x lpjml_timing >/dev/null; }
+
 wait_for_idle() {
-    while pgrep -af "lpjml" | grep -v lpjml_bench_bin | grep -v suite.sh | grep -q .; do
+    while lpjml_running; do
         sleep 60
     done
     say "machine is idle"
