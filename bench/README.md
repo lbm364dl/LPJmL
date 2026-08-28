@@ -147,3 +147,57 @@ The residual is the machine: a P-core runs this workload in 21.8s where an
 E-core takes 35.6s, so an E-core is worth 0.61 of a P-core. Ranks left on
 E-cores set the pace no matter how the work is split, which is what
 `task_weights` together with `--bind-to core --map-by core` is for.
+
+## Measured result
+
+Five transient years, full global grid, 24 ranks, from the spun-up restart.
+Times are LPJmL's own "Wall clock time", so startup is excluded.
+
+| configuration | simulation | speedup |
+| --- | --- | --- |
+| equal cell count, unpinned (current production setting) | 579 s | — |
+| split by measured cell cost | 446 s | 1.30x |
+| split by cost, pinned, weighted for P-cores vs E-cores | 380 s | 1.52x |
+
+0.0020 -> 0.0013 sec/cell/year. Against the 41,234 s production run that is
+about 11.5 h -> 7.5 h.
+
+The cost file predicted 1.79x, and the gap is expected: 1.79x was the ceiling
+for `update_daily_cell` alone, while river routing, output collection and the
+monthly and annual steps do not shrink.
+
+## How to use it
+
+Nothing in the model changes. Three optional config keys and one mpirun flag.
+
+**Once**, to produce the cost file. Run one transient year from a spun-up
+restart with the tasks on cores of the same kind, so that cell cost is not
+confounded with core speed:
+
+    "write_cellcost_filename": "/path/to/cost.bin"
+
+    mpirun -np 8 --bind-to core --map-by core ./bin/lpjml config.json
+
+Eight ranks land on the eight P-cores. It takes about three minutes.
+
+**Then**, in every run:
+
+    "cellcost_filename": "/path/to/cost.bin",
+    "task_weights": [1,1,1,1,1,1,1,1, 0.61,0.61,0.61,0.61,0.61,0.61,0.61,0.61,
+                     0.61,0.61,0.61,0.61,0.61,0.61,0.61,0.61]
+
+    mpirun -np 24 --bind-to core --map-by core ./bin/lpjml config.json
+
+The weights are the relative speed of the core each rank is pinned to. With
+`--bind-to core --map-by core` rank r goes to core r, and on this machine cores
+0-7 are P-cores and 8-23 are E-cores; 0.61 is the measured ratio (a P-core runs
+this workload in 21.8 s where an E-core takes 35.6 s). Re-measure on a
+different machine. Both keys are optional and independent: with neither, the
+split is exactly what it has always been.
+
+Note that 24 pinned ranks beats the 30 unpinned ranks currently used. Going
+past 24 needs `--use-hwthread-cpus` and a weight for every rank, and the second
+thread of a P-core is worth much less than the first.
+
+Recalibrate the cost file if the land use, the resolution or the machine
+changes. A stale cost file costs speed and cannot change results.
