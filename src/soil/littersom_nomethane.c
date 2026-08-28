@@ -40,6 +40,13 @@ static Real f_ph(Real ph)
   return 0.56 + atan(M_PI*0.45*(-5 + ph)) / M_PI;
 } /* of 'f_ph' */
 
+/* q10_wood takes only a handful of distinct values over the whole PFT table --
+   five in the standard parameter set, and 1.0 for every crop -- while the two
+   exponents are fixed for the entire litter loop.  pow() was therefore being
+   asked the same question again and again.  Eight slots covers the table with
+   room to spare; anything beyond that just calls pow() as before. */
+#define NQ10CACHE 8
+
 Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand data */
                            const Real gtemp_soil[NSOILLAYER], /**< respiration coefficents */
                            Real cellfrac_agr,           /**< stand fraction of agricultural cells (0..1) */
@@ -71,6 +78,9 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
   Real F_N2O=0;                /* soil nitrification rate gN *m-2*d-1*/
   Real F_Nmineral;  /* net mineralization flux gN *m-2*d-1*/
   Real fac_wfps, fac_temp;
+  Real q10base[NQ10CACHE],q10agsub[NQ10CACHE],q10agtop[NQ10CACHE];
+  Real q10w,p_agsub,p_agtop;
+  int nq10=0,q;
 #ifdef SAFE
   String line;
 #endif
@@ -203,8 +213,31 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
          c_shift terms that the pool update and three output blocks all share */
       litterpft=soil->litter.item[p].pft;
       pftid=litterpft->id;
-      response_agsub_wood=pow(litterpft->k_litter10.q10_wood,q10exp_agsub)*fmoist_bg;
-      response_agtop_wood=pow(litterpft->k_litter10.q10_wood,q10exp_agtop)*fmoist_agtop;
+      /* the same base and exponent return the same bits, so reusing an
+         answer already computed in this loop is exact */
+      q10w=litterpft->k_litter10.q10_wood;
+      for(q=0;q<nq10;q++)
+        if(q10base[q]==q10w)
+          break;
+      if(q<nq10)
+      {
+        p_agsub=q10agsub[q];
+        p_agtop=q10agtop[q];
+      }
+      else
+      {
+        p_agsub=pow(q10w,q10exp_agsub);
+        p_agtop=pow(q10w,q10exp_agtop);
+        if(nq10<NQ10CACHE)
+        {
+          q10base[nq10]=q10w;
+          q10agsub[nq10]=p_agsub;
+          q10agtop[nq10]=p_agtop;
+          nq10++;
+        }
+      }
+      response_agsub_wood=p_agsub*fmoist_bg;
+      response_agtop_wood=p_agtop*fmoist_agtop;
 
       decom_sum.carbon=decom_sum.nitrogen=0;
       /* agtop leaves */
