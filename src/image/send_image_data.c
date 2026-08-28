@@ -659,7 +659,7 @@ Bool send_image_data(const Cell grid[],      /**< LPJ grid */
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,NBPOOLS,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,NBPOOLS,config->ntask);
   mpi_write_socket(config->out,biomass_image,MPI_FLOAT,
                    config->nall*NBPOOLS,counts,offsets,config->rank,config->comm);
   mpi_write_socket(config->out,biomass_image_nat,MPI_FLOAT,
@@ -668,7 +668,7 @@ Bool send_image_data(const Cell grid[],      /**< LPJ grid */
                    config->nall*NBPOOLS,counts,offsets,config->rank,config->comm);
   mpi_write_socket(config->out,biomass_image_agr,MPI_FLOAT,
                    config->nall*NBPOOLS,counts,offsets,config->rank,config->comm);
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   mpi_write_socket(config->out,biome_image,MPI_INT,config->nall,
                    counts,offsets,config->rank,config->comm);
   mpi_write_socket(config->out,nep_image,MPI_FLOAT,config->nall,
@@ -736,10 +736,10 @@ Bool send_image_data(const Cell grid[],      /**< LPJ grid */
                    config->nall,counts,offsets,config->rank,config->comm);
 #endif
 /* sending yield data to interface -- needs to be read at the same position! */
-  getcounts(counts,offsets,config->nall,ncrops,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,ncrops,config->ntask);
   mpi_write_socket(config->out,yields[0],MPI_FLOAT,
                    config->nall*ncrops,counts,offsets,config->rank,config->comm);
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   mpi_write_socket(config->out,adischarge,MPI_FLOAT,
                    config->nall,counts,offsets,config->rank,config->comm);
   mpi_write_socket(config->out,nppgrass_image,MPI_FLOAT,
@@ -750,7 +750,7 @@ Bool send_image_data(const Cell grid[],      /**< LPJ grid */
                    config->nall,counts,offsets,config->rank,config->comm);
   mpi_write_socket(config->out,agrfrac_image,MPI_FLOAT,
                    config->nall,counts,offsets,config->rank,config->comm);
-  getcounts(counts,offsets,config->nall,NMONTH,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,NMONTH,config->ntask);
   mpi_write_socket(config->out,monthirrig,MPI_FLOAT,
                    config->nall*NMONTH,counts,offsets,config->rank,config->comm);
   mpi_write_socket(config->out,monthevapotr,MPI_FLOAT,

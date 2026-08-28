@@ -23,6 +23,7 @@ double timing[N_FCN]={};
 char *timing_fcn[N_FCN]=
 {
   "daily_littersom",
+  "daily_stand",
   "drain",
   "fopenoutput",
   "fwriterestart",
@@ -39,7 +40,9 @@ char *timing_fcn[N_FCN]=
   "readconfig",
   "read_socket",
   "setupannual_grid",
+  "update_soil_thermal_state",
   "storeclimate",
+  "update_annual_cell",
   "update_daily_cell",
   "updatedaily_grid",
   "water_stressed",

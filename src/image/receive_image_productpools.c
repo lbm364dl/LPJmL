@@ -36,7 +36,7 @@ Bool receive_image_productpools(Cell *cell,          /**< LPJ grid */
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,sizeof(Timber)/sizeof(float),config->ntask);
+  getcounts(counts,offsets,config->cellcounts,sizeof(Timber)/sizeof(float),config->ntask);
   rc=mpi_read_socket(config->in,(float *)image_timber_distribution,MPI_FLOAT,
                      config->nall*sizeof(Timber)/sizeof(float),counts,
                      offsets,config->rank,config->comm);

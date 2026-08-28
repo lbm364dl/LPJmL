@@ -93,7 +93,7 @@ int main(int argc,char **argv)
 {
   Outputfile *output; /* Output file array */
   const char *progname;
-  int year,rc,error_count_total;
+  int i,year,rc,error_count_total;
   Cell *grid;         /* cell array */
   Input input;        /* input data */
   time_t tstart,tend,tinvoke;   /* variables for timing */
@@ -322,6 +322,17 @@ int main(int argc,char **argv)
     writearea(output,LAKE_AREA,grid,&config);
   if(isopen(output,COUNTRY) && config.withlanduse)
     writecountrycode(output,COUNTRY,grid,&config);
+  if(config.write_cellcost_filename!=NULL)
+  {
+    /* measure how long each cell takes, so that a later run can split the grid
+       by cost rather than by cell count */
+    cellcost=newvec(Real,config.ngridcell);
+    if(cellcost==NULL)
+      printallocerr("cellcost");
+    else
+      for(i=0;i<config.ngridcell;i++)
+        cellcost[i]=0;
+  }
   if(isroot(config))
     puts("Simulation begins...");
   time(&tstart); /* Start timing */
@@ -331,6 +342,12 @@ int main(int argc,char **argv)
                &config);
   /* Simulation has finished */
   time(&tend); /* Stop timing */
+  if(cellcost!=NULL)
+  {
+    writecellcost(config.write_cellcost_filename,cellcost,&config);
+    free(cellcost);
+    cellcost=NULL;
+  }
   fcloseoutput(output,&config);
   if(isroot(config))
     puts((year>config.lastyear) ? "Simulation ended." : "Simulation stopped.");

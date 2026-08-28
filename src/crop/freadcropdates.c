@@ -30,6 +30,20 @@ static Bool readcropdate(Bstruct file,Cropdates *cropdates)
     return TRUE;
   if(bstruct_readint(file,"last_update_vern",&cropdates->last_update_vern))
     return TRUE;
+  /* fallow[] was not part of the restart file until now. freadcropdates()
+     allocates with malloc, so on an older file it was left as whatever was in
+     the heap, and sowingcft() branches on it on the first day of the run --
+     which made a run that started from a restart file disagree with itself.
+     Read it when the file has it, and otherwise start from no pending fallow,
+     which is what init_cropdates() does for a run that starts from bare
+     ground. Older restart files stay readable. */
+  if(bstruct_isdefined(file,"fallow"))
+  {
+    if(bstruct_readintarray(file,"fallow",cropdates->fallow,2))
+      return TRUE;
+  }
+  else
+    cropdates->fallow[0]=cropdates->fallow[1]=0;
   return bstruct_readendstruct(file,NULL);
 } /* of 'readcropdate' */
 

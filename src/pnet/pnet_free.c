@@ -44,6 +44,7 @@ void pnet_free(Pnet *pnet)
     for(i=pnet->lo;i<=pnet->hi;i++)
       emptyintlist(pnet->connect+i);
     freevec(pnet->connect,pnet->lo,pnet->hi);
+  free(pnet->bounds);
     free(pnet);
   }
 } /* of 'pnet_free' */
