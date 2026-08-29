@@ -141,6 +141,15 @@ def main():
     print(f"  {status:<10} {what}  {detail}")
 
     print(f"\n{ok}/{ok + len(bad)} output files identical")
+    # Comparing nothing is not a pass.  A run that died before writing any
+    # output, or a pair of directories that share no file, used to come out as
+    # IDENTICAL and read as a green light.
+    if ok + len(bad) == 0 and not status.startswith("IDENTICAL"):
+        print("VERDICT: NOTHING COMPARED -- neither run produced output")
+        return 2
+    if ok + len(bad) == 0 and detail == "neither run wrote a restart file":
+        print("VERDICT: NOTHING COMPARED -- no output files and no restart file")
+        return 2
     verdict = not bad and status.startswith("IDENTICAL")
     print("VERDICT:", "IDENTICAL" if verdict else "DIFFERENT")
     return 0 if verdict else 1
