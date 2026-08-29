@@ -219,6 +219,149 @@ configuration that has already been run through successfully, 4% for a
 consistency check you have already passed is a reasonable trade; for a new one
 it is not.
 
+## The largest number in this file: the production runs are not load balanced
+
+Everything else here is worth a few percent.  This is worth a third of the run,
+and it is not a code change -- the machinery has been in the tree since the
+first round and the production configuration does not switch it on.
+
+### What the default split costs
+
+Measure the per-cell cost of the current binary over the whole grid, split it
+into 24 equal-count blocks the way LPJmL does when given no cost file, and the
+work per rank comes out:
+
+    equal-count split, 24 tasks:   max/mean = 1.806   min/mean = 0.088
+
+The slowest rank carries 1.8 times the average work while the lightest is
+essentially idle, because the grid is ordered geographically and cost follows
+vegetation.  Every rank waits for the slowest at every routing exchange.
+
+### Measure the cost on cores of one kind
+
+A cost file records what each cell cost *on the rank that owned it*, so a file
+measured across a hybrid chip conflates cell cost with core speed: cells that
+landed on E-cores look expensive.  The first file measured this way still gave
+12%, because the vegetation signal (11.5x) is larger than the core-speed
+distortion, but it is the wrong measurement.
+
+Measure it on cores of one kind instead:
+
+    mpirun -np 8 --bind-to core --map-by core ...    # ranks 0-7 are the P-cores
+
+The two files correlate at 0.944 and differ by 23% in the median cell, and the
+clean one shows a wider true range -- heaviest/median 16.7 against 11.5, since
+the distorted file had inflated its cheap cells.
+
+### Then weight the tasks, because the cores are not alike
+
+Splitting by cost gives every rank equal *work*, which on this chip is not equal
+*time*.  Split by the clean costs, pin, and measure what each task actually
+took:
+
+    per-task time, cost-split and pinned:  min 23.7s  mean 38.1s  max 45.6s
+                                           slowest/mean 1.197
+
+    ranks 0-7   (P-cores)   ~24 s
+    ranks 8-23  (E-cores)   ~40 s
+
+`bench/cellcost.py retune` turns that into `task_weights`, which come out near
+1.0 for the P-cores and near 0.53 for the E-cores -- a consistent 1.8x.  One
+iteration takes the imbalance to 1.095; a second barely moves the weights.
+
+### Thirty-two ranks is better than twenty-four, and needs no weights
+
+Twenty-four ranks fills the twenty-four physical cores and leaves the second
+hardware thread of each P-core idle.  Running thirty-two ranks over all
+thirty-two threads is faster, and it makes the weights unnecessary: sharing a
+P-core between two threads narrows the gap to the E-cores from 1.8x to about
+1.25x, and the imbalance after a plain cost split is already 1.130.
+
+    32 ranks, cost split, pinned to hwthreads          62.4 s
+    32 ranks, cost split, pinned, plus task weights    62.3 s   -- no better
+
+So the recommended configuration is the simpler one: a cost file, thirty-two
+ranks, pinned to hardware threads, and no weights at all.  Weights remain worth
+having at twenty-four ranks, where they are 10.8%.
+
+### The whole ladder
+
+Global grid, river routing, one year, 24 ranks, on the production
+configuration.  Byte-identical at every step -- the decomposition decides which
+rank owns which cell and nothing else:
+
+    default split, 24 ranks, unpinned          95.5 s    what is run now
+    default split, 24 ranks, pinned           100.0 s    +4.7%, worse
+    cost split (distorted file), unpinned      84.0 s   -12.1%
+    cost split (clean file), 24 pinned         74.7 s   -21.8%
+    + task weights, 24 pinned                  66.6 s   -30.3%
+    cost split, 32 ranks pinned to hwthreads   61.9 s   -35.2%   1.54x
+
+Confirmed over five years, both orders: 485.8 s against 309.9 s, 1.57x,
+byte-identical.  The ratio grows with the length of the run, because the input
+reading at the start does not divide by cell cost.
+
+Pinning on its own is worse than not pinning: it fixes a bad assignment in
+place, where an unpinned run at least lets the scheduler shuffle work off the
+overloaded ranks.  Pin only together with a cost file.
+
+The recipe, once:
+
+    bench/enable_balance.py <config.json> --cost /path/cost_pcore.bin
+    mpirun -np 32 --bind-to hwthread --map-by hwthread ...
+
+Note that the pinned numbers repeat to 0.1 s -- 66.5/66.7 and 74.6/74.7 -- while
+every unpinned 24-rank measurement in this file has a spread of several percent.
+Pinning removes the power-budget noise as well, because it stops the scheduler
+migrating ranks between P- and E-cores mid-run.  **Pin the benchmark even when
+you do not want the weights.**
+
+The memory high-water mark rises with balancing, 306 MB to 529 MB per rank,
+because a rank drawing cheap cells is given many more of them.  At 24 ranks that
+is about 13 GB.
+
+A stale cost file costs performance and never accuracy: it can only produce a
+worse split, never a wrong answer.
+
+## Everything together
+
+Original binary and configuration against the current binary with the balanced
+configuration, global grid with river routing, one year, both orders:
+
+    original binary, default split, 24 unpinned      111.8 s
+    current binary,  cost split, 32 pinned            61.9 s   1.81x  identical
+    + the fast build (-nosafe and reassociation)      59.4 s   1.88x  moves
+
+**1.81x of it is byte-identical**, over all five outputs.  About a third is the
+compute work in the binary and two thirds the decomposition, and they compound
+because they are unrelated: one reduces the work, the other stops three
+quarters of the machine waiting for the rest.
+
+What the last line costs, against the yardstick the model supplies:
+
+                                          worst p99 |rel|   worst field total
+    whole stack vs the original               2.5e-4            7.9e-6
+    the model's own lambda-solver spread      6.5e-2            3.9e-3
+
+260 times smaller in the percentile and 490 times smaller in the totals than
+the spread between two runs that both satisfy the model's own convergence test.
+
+### Where the remaining time goes
+
+At 32 ranks the imbalance after a cost split is 1.130 and task weights do not
+improve it.  Comparing what the cost file predicts for each task against what
+the in-situ measurement recorded shows why:
+
+    predicted per-task cost   max/mean 1.002   (flat by construction)
+    measured  per-task cost   max/mean 1.131
+    correlation between them  0.071
+
+Every task measures 1.6 to 2.1 times its predicted cost, and the correlation
+between prediction and measurement is nil.  That is waiting, not working: the
+in-situ figure absorbs the time each rank spends at the eight routing exchanges
+a day.  Further balancing cannot remove it, which is why the weights worth
+10.8% at 24 ranks are worth nothing at 32.
+
 ### One grid block is not a profile of a global run
 
 Every profile above until this point came from cells 36000-36999 -- dense
