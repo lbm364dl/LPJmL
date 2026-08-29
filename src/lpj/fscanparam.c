@@ -200,6 +200,12 @@ Bool fscanparam(LPJfile *file,       /**< File pointer to text file */
   if(config->withlanduse!=NO_LANDUSE)
   {
     fscanparamreal01(f,&param.tinyfrac,"tinyfrac");
+    param.min_cropfrac=0;   /* optional: absent means the feature is off */
+    if(iskeydefined(f,"min_cropfrac"))
+    {
+      if(fscanreal01(f,&param.min_cropfrac,"min_cropfrac",FALSE,verbosity))
+        return TRUE;
+    }
     fscanparamreal(f,&param.lsuha,"lsuha");
     fscanparamreal(f,&param.aprec_lim,"aprec_lim");
     fscanparamreal01(f,&param.irrigation_soilfrac,"irrig_soilfrac");

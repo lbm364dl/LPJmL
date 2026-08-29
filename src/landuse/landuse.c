@@ -491,6 +491,47 @@ static Real reducelanduse(Cell *cell,Real sum,int ncft,int nagtree)
   return sum;
 } /* of 'reducelanduse' */
 
+static void dropsmallcrops(Cell *cell,int ncft,Real minfrac)
+{
+  /*
+   * Fold crop areas below minfrac into the largest crop of the same irrigation
+   * regime.  Every crop of a cell carries its own soil column and its own daily
+   * water, nitrogen and phenology cycle, so the cost of a cell is set by how
+   * many crops it grows rather than by how much of it is cropped: a third of
+   * all crop stands in the WHEP land use hold five thousandths of a percent of
+   * the cropland between them.
+   *
+   * Total land and total cropland are unchanged -- the area moves rather than
+   * disappearing -- but the crop mix shifts by the amount transferred, so this
+   * is off unless asked for.  A regime whose crops are all below the threshold
+   * keeps them: something has to hold the area.
+   */
+  int i,j,jmax;
+  Real moved,fmax;
+  for(i=0;i<WIRRIG;i++)
+  {
+    jmax=-1;
+    fmax=minfrac;
+    for(j=0;j<ncft;j++)
+      if(cell->ml.landfrac[i].crop[j]>fmax)
+      {
+        fmax=cell->ml.landfrac[i].crop[j];
+        jmax=j;
+      }
+    if(jmax<0)
+      continue;
+    moved=0;
+    for(j=0;j<ncft;j++)
+      if(j!=jmax && cell->ml.landfrac[i].crop[j]>0 &&
+         cell->ml.landfrac[i].crop[j]<minfrac)
+      {
+        moved+=cell->ml.landfrac[i].crop[j];
+        cell->ml.landfrac[i].crop[j]=0;
+      }
+    cell->ml.landfrac[i].crop[jmax]+=moved;
+  }
+} /* of 'dropsmallcrops' */
+
 Bool getlanduse(Landuse landuse,     /**< Pointer to landuse data */
                 Cell grid[],         /**< LPJ cell array */
                 int year,            /**< year (AD) */
@@ -877,6 +918,8 @@ Bool getlanduse(Landuse landuse,     /**< Pointer to landuse data */
       }
 
     }
+    if(param.min_cropfrac>0)
+      dropsmallcrops(grid+cell,ncft,param.min_cropfrac);
     sum=landfrac_sum(grid[cell].ml.landfrac,ncft,config->nagtree,FALSE)+landfrac_sum(grid[cell].ml.landfrac,ncft,config->nagtree,TRUE);
 
     /* set landuse to zero if no valid soil */
