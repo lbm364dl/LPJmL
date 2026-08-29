@@ -671,6 +671,19 @@ keeping:
   * Skipping litter items whose pools are all exactly zero, which would be
     exact since adding 0.0 changes nothing: 0.03% of items qualify.
   * Prefetching the bioturbation loop: marginally slower.
+  * Hoisting `1.0/(1-cell->lakefrac-cell->ml.reservoirfrac)` out of the stand
+    loop in `update_daily_cell`, where it is written out seventeen times and
+    evaluated once per soil layer on top of that.  It looked like the petpar
+    case -- a cell-invariant division repeated per stand, reached through a
+    pointer while the loop stores Reals, so in principle reloaded every time --
+    and it is worth nothing: 54.7 s against 54.6 s.  The compiler already
+    handles it.
+
+The pattern in the last one is worth naming, because it caught me twice.  A
+subexpression being cell-invariant, repeated, and theoretically un-hoistable by
+the compiler is not sufficient reason to hoist it: `param.bioturbate` in the
+bioturbation loop was worth having, `param.*` in littersom and photosynthesis
+was worth 0.2%, and this was worth nothing.  Measure each one.
 
 ### Huge pages, for the price of an environment variable
 
