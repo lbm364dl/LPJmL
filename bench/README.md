@@ -166,6 +166,59 @@ run.
 Note that 24 is the rank ceiling here: mpirun counts the 8 P-cores and 16
 E-cores as 24 slots and refuses -np 32 without oversubscribing.
 
+### Finding the redundant work instead of guessing at it
+
+The three call sites in the first round were found by reading a profile and
+reasoning about them.  That does not scale, and the two guesses that followed
+were both wrong: a `pow(10,0)` guard that duplicated a fast path glibc already
+has (21.7 million calls, all skipped, no measurable gain), and a `pow(1,y)`
+guard whose condition never fires at all.
+
+`bench/powprof.h` replaces the guessing.  It wraps every `pow()`/`exp()` call
+site and records how often it is handed the argument it was handed last time.
+A site with a high repeat rate is one a one-entry memo collapses exactly.
+
+    ./configure.sh ... && sed -i 's|^OPTFLAGS= .*|& -DPOW_PROFILE -include '$PWD'/bench/powprof.h|' Makefile.inc
+    make clean && make -j$(nproc)          # a clean build: it is a header change
+
+Each translation unit keeps its own table and prints at exit, so nothing has to
+be linked in.  **Build clean**, or only the files that happen to be newer than
+their objects get instrumented -- which is how the first run of it came back
+claiming every call in the model was in `infil_perc.c`.
+
+It found five sites in the litter loop at 105 million calls each, repeating
+between 57% and 98% of the time, and a `pow()` of a compile-time constant
+sitting inside a loop in two places.  1579 million libm calls became 1176
+million; `pow` fell from 9.2% of the run to 2.2% and `exp` left the top twenty.
+
+A caution the tool cannot give you: a memo only pays when what it skips costs
+more than the lookup.  An eight-entry cache would have raised the hit rate on
+`temp_stress` from 37% to 80%, but a linear scan of eight doubles costs about
+as much as the `exp()` it avoids, so it would have bought nothing.  The wins
+here are the ones where the skipped work is a whole `pow()` or the lookup is
+free because the value was hoisted out of a loop entirely.
+
+### The SAFE checks cost about 4%
+
+`-DSAFE` is on by default in every makefile template.  Its blocks are pure
+checks -- they test for states that should not arise, and call `fail()` if one
+does -- and there are 78 of them, 19 in `littersom_nomethane` and `infil_perc`
+alone.
+
+    with -DSAFE     56.0 s
+    without         53.9 s     -3.7%     byte-identical
+
+Byte-identical over the full restart state, which is what one would expect:
+while no check fires, removing them cannot change an answer.  `./configure.sh
+-nosafe` now turns them off.
+
+It is off by default and should stay that way for anything exploratory.  The
+checks are the difference between a run that stops and tells you the soil NO3
+went negative, and a run that finishes and hands you the output anyway.  For a
+configuration that has already been run through successfully, 4% for a
+consistency check you have already passed is a reasonable trade; for a new one
+it is not.
+
 ### The compiler's floating-point options
 
 Measured the same way, at one rank, against the byte-identical build at 58.2 s.

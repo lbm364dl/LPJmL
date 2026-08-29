@@ -6,7 +6,7 @@
 ##   configure script to copy appropriate Makefile.$osname                     ##
 ##                                                                             ##
 ##   Usage: configure.sh [-h] [-v] [-l] [-prefix dir] [-inpath dir] [-debug]   ##
-##                       [-check] [-with_timing] [-nompi] [-noerror]           ##
+##                       [-check] [-with_timing] [-nompi] [-noerror] [-nosafe]  ##
 ##                       [-Dmacro[=value] ...]                                 ##
 ##                                                                             ##
 ## (C) Potsdam Institute for Climate Impact Research (PIK), see COPYRIGHT file ##
@@ -16,7 +16,7 @@
 ## Contact: https://github.com/PIK-LPJmL/LPJmL                                 ##
 #################################################################################
 
-USAGE="Usage: $0 [-h] [-v] [-l] [-prefix dir] [-inpath dir] [-debug] [-with_timing] [-nompi] [-check] [-check_balance] [-noerror] [-Dmacro[=value] ...]"
+USAGE="Usage: $0 [-h] [-v] [-l] [-prefix dir] [-inpath dir] [-debug] [-with_timing] [-nompi] [-check] [-check_balance] [-noerror] [-nosafe] [-Dmacro[=value] ...]"
 ERR_USAGE="\nTry \"$0 --help\" for more information."
 debug=0
 nompi=0
@@ -25,6 +25,7 @@ checking=""
 macro=""
 inpath=""
 warning="-Werror"
+nosafe=0
 while(( "$#" )); do
   case "$1" in
     -h|--help)
@@ -43,6 +44,9 @@ while(( "$#" )); do
       echo "-check          enable run-time checking of memory leaks and access out of bounds"
       echo "-check_balance  enable balance checking in lpj functions"
       echo "-noerror        do not stop compilation on warnings"
+      echo "-nosafe         drop the SAFE consistency checks (about 4% faster,"
+      echo "                and byte-identical while none of them would fire,"
+      echo "                but a run that goes wrong then does so silently)"
       echo "-nompi          do not build MPI version"
       echo "-Dmacro[=value] define macro for compilation"
       echo
@@ -91,6 +95,10 @@ while(( "$#" )); do
       ;;
     -noerror)
       warning=""
+      shift 1
+      ;;
+    -nosafe)
+      nosafe=1
       shift 1
       ;;
     -nompi)
@@ -194,6 +202,14 @@ else
   echo >&2 Warning: unsupported operating system, Makefile.$osname created
   cp config/Makefile.gcc Makefile.$osname
   cp config/Makefile.$osname Makefile.inc
+fi
+if [ "$nosafe" = "1" ]
+then
+  # The SAFE blocks are pure checks: they test for states that should not
+  # arise and call fail() if one does.  While none of them fires the results
+  # are identical, and they cost about 4% -- most of it in littersom and
+  # infil_perc, which carry nineteen of them between them.
+  sed -i "s/-DSAFE //;s/ -DSAFE//" Makefile.inc
 fi
 if [ "$debug" = "1" ]
 then
