@@ -62,6 +62,7 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
   Real nh3;
   int l,i;
   Real prec_save;
+  Petpar petpar_day;          /* the parts of petpar() shared by all stands */
   Real bioturb,bioturb_keep;  /* bioturbation transfer and retention fractions */
   Litteritem *litteritem;
   Real agrfrac;
@@ -187,6 +188,12 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
     agrfrac=0;
     cell->balance.ricefrac=0;
 
+    /* solar geometry, the longwave correction and the vapour-pressure slope
+       depend on the cell and the day, not on the stand; albedo is the only
+       per-stand input and enters through petpar_stand() */
+    petpar_cell(&petpar_day,cell->coord.lat,day,climate->temp,climate->lwnet,
+                climate->swdown,config->radiation_lwdown);
+
     foreachstand(stand,s,cell->standlist)
     {
       if(isagriculture(stand))
@@ -205,7 +212,7 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
         litteritem->agtop.leaf.nitrogen *= bioturb_keep;
       }
       beta=albedo_stand(stand);
-      petpar(&daylength,&par,&eeq,cell->coord.lat,day,climate->temp,climate->lwnet,climate->swdown,config->radiation_lwdown,beta);
+      petpar_stand(&daylength,&par,&eeq,&petpar_day,beta);
       if(config->isgsi_livefuel)
       {
         if(s==0)
@@ -611,7 +618,7 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
     cell->balance.awater_flux+=cell->discharge.drunoff;
     if(config->with_lakes)
     {
-      petpar(&daylength,&par,&eeq,cell->coord.lat,day,climate->temp,climate->lwnet,climate->swdown,config->radiation_lwdown,c_albwater);
+      petpar_stand(&daylength,&par,&eeq,&petpar_day,c_albwater);
       getoutput(&cell->output,PET,config)+=eeq*PRIESTLEY_TAYLOR*(cell->lakefrac+cell->ml.reservoirfrac);
       cell->output.mpet+=eeq*PRIESTLEY_TAYLOR*(cell->lakefrac+cell->ml.reservoirfrac);
       getoutput(&cell->output,ALBEDO,config)+=c_albwater*(cell->lakefrac+cell->ml.reservoirfrac);
