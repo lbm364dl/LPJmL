@@ -23,5 +23,17 @@ Real fpar_crop(const Pft *pft /**< pointer to PFT data */
   if(pft->par->ismaize)
     return min(1,max(0,0.2558*max(0.01,crop->lai-crop->lai_nppdeficit)-0.0024))*(1-pft->snowcover);
   else
-    return (1-exp(-pft->par->lightextcoeff*max(0,(crop->lai-crop->lai_nppdeficit))))*(1-pft->snowcover);
+  {
+    /* the same canopy on the same day for every stand that grows it */
+    static Real lx=0,lv=0;
+    static Bool have=FALSE;
+    Real x=-pft->par->lightextcoeff*max(0,(crop->lai-crop->lai_nppdeficit));
+    if(!have || x!=lx)
+    {
+      lx=x;
+      lv=1-exp(x);
+      have=TRUE;
+    }
+    return lv*(1-pft->snowcover);
+  }
 } /* of 'fpar_crop' */

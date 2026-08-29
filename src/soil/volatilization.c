@@ -26,15 +26,28 @@ static Real f_nh3(Real temp, /**< temperature (deg C) */
                   Real pH    /**< soil pH */
                  )
 {
+  static Real lt=0,lp=0,lv=0;
+  static Bool have=FALSE;
   Real k_a; /* dissociation constant */
+  if(have && temp==lt && pH==lp)
+    return lv;
   k_a=pow(10,0.05-2788./degCtoK(temp)); /* Eq. (10) in F. Montes et al. (2009) */
-  return 1.0/(1.0+pow(10,-pH)/k_a); /* Eq. (4)  */
+  lt=temp;
+  lp=pH;
+  have=TRUE;
+  return lv=1.0/(1.0+pow(10,-pH)/k_a); /* Eq. (4)  */
 }
 
 static Real k_h(Real temp /**< temperature (deg C) */
                )          /** \return Henry's law constant */
 {
-  return 0.2138/degCtoK(temp)*pow(10,6.123-1825/degCtoK(temp)); /* Eq. (11) */
+  static Real lt=0,lv=0;
+  static Bool have=FALSE;
+  if(have && temp==lt)
+    return lv;
+  lt=temp;
+  have=TRUE;
+  return lv=0.2138/degCtoK(temp)*pow(10,6.123-1825/degCtoK(temp)); /* Eq. (11) */
 }
 
 static Real h_m(Real wind,  /**< wind speed (m/s) */
