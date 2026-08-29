@@ -346,6 +346,53 @@ What the last line costs, against the yardstick the model supplies:
 260 times smaller in the percentile and 490 times smaller in the totals than
 the spread between two runs that both satisfy the model's own convergence test.
 
+### Where the remaining time goes, measured at scale
+
+Every profile in this file until now was of a single rank.  The `-with_timing`
+build gives the breakdown across all of them.  Global grid, river routing, 32
+ranks pinned, cost split, one year (avg and max over the 32 tasks):
+
+    update_daily_cell         avg 35.69 s  53.5%    max 41.36 s
+    MPI_Barrier               avg 17.04 s  25.6%    max 22.86 s
+    daily_littersom           avg 11.69 s  17.5%    max 15.05 s
+    drain                     avg  4.86 s   7.3%    max 16.64 s
+    newgrid (input reading)   avg  3.80 s   5.7%
+
+The `MPI_Barrier` line exists only under `-with_timing`: it is a barrier
+inserted before the routing exchange purely to separate waiting from working,
+and it is not in the shipping build, where that time is absorbed into
+`pnet_exchg`.  So read it as **a quarter of the run is ranks idle, waiting for
+the slowest one to finish its cells that day**.
+
+That is not annual imbalance.  The annual figure is only 41.36/35.69 = 1.16.
+The daily figure is much worse, because a different rank is the straggler on
+different days.
+
+### Why multi-chunk decomposition is not the answer to it
+
+The obvious fix is to give each rank cells from several latitudes so that
+seasonal peaks average out, which is what the unfinished `divide_chunks` work
+on the `perf/multichunk` branch does.  The same run at 8 ranks says it would
+not pay:
+
+                                 8 ranks    32 ranks
+    update_daily_cell max/avg      1.022       1.159
+    MPI_Barrier                    18.7%       25.6%
+
+At 8 ranks each rank owns a seventh of the grid, spanning most of its latitude
+range, and the annual balance is nearly perfect -- and the ranks still idle 19%
+of the run.  Widening the span further, which is all chunking does, cannot get
+below that floor.  It would move 25.6% toward perhaps 19%: about six percent of
+the run, for a forty-file change to the decomposition, the restart reader and
+the NetCDF input path that has never been validated.
+
+What the floor is made of is day-to-day variation in per-cell work -- a cell
+costs more on the days it is growing or being harvested, and cells that share a
+rank share a climate -- plus the sync overhead itself.  Neither divides away.
+
+Eight ranks is also simply slower: 127.8 s against 62 s, so the extra ranks are
+worth having even at a worse balance ratio.
+
 ### Where the remaining time goes
 
 At 32 ranks the imbalance after a cost split is 1.130 and task weights do not
