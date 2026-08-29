@@ -707,6 +707,21 @@ the profile is worth 4.2% on one rank and 3.2% on thirty-two.  Both are real,
 but the decomposition is where the large number is, and a change that looks
 small on one rank will not become large on all of them.
 
+### Re-run configure.sh after using the profiler, or the next measurement is a lie
+
+`bench/powprof.h` is enabled by editing `OPTFLAGS` in `Makefile.inc`, and
+`Makefile.inc` survives `make clean`.  Building a later experiment with `make`
+alone therefore carries the instrumentation into it, which costs about twenty
+percent -- and that is how a batch of memos came to be recorded, briefly, as
+"twenty percent slower and not byte-identical".  Rebuilt properly they are
+neither: they are 0.5% faster and identical.
+
+The tell was that each memo was byte-identical on its own and only the
+combination was not, which is not a thing that happens.  When two changes are
+individually correct and jointly wrong, suspect the build before the code.
+**Always `make clean && ./configure.sh ...` between experiments, not just
+`make clean`.**
+
 ### Things tried that changed nothing
 
 Recorded so they are not retried.  All were byte-identical and none was worth
