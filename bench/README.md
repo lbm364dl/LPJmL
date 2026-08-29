@@ -328,10 +328,16 @@ worse split, never a wrong answer.
 Original binary and configuration against the current binary with the balanced
 configuration, global grid with river routing, one year, both orders:
 
-    original binary, default split, 24 unpinned      111.8 s
+    original binary, default split, 24 unpinned      111.9 s
     current binary,  cost split, 32 pinned            61.9 s   1.81x  identical
     + -lto and a profile                              60.3 s   1.85x  identical
-    + the fast build (-nosafe and reassociation)      59.4 s   1.88x  moves
+    + glibc.malloc.hugetlb=1                          59.5 s   1.88x  identical
+    + the fast build (-nosafe and reassociation)         --    ~1.96x moves
+
+The third line is measured end to end against the original in both orders:
+111.7 and 112.0 s against 59.9 and 59.1 s.  **The whole of that 1.88x is
+byte-identical** -- all five outputs, no exceptions -- which is where the fast
+build alone stood before any of the build and decomposition work.
 
 **1.81x of it is byte-identical**, over all five outputs.  About a third is the
 compute work in the binary and two thirds the decomposition, and they compound
@@ -580,6 +586,32 @@ discussed below put together.  It is the scale against which "negligible"
 should be judged for this model -- and it says that if the lambda tolerance
 ever matters scientifically, `illinois()` reaches a much better answer for less
 time than `bisect()` reaches a worse one.
+
+### Huge pages, for the price of an environment variable
+
+Transparent huge pages are set to `madvise` on this machine, and LPJmL never
+asks, so it runs a 400 MB working set entirely on 4 kB pages.  glibc 2.34 and
+later will ask on malloc's behalf:
+
+    GLIBC_TUNABLES=glibc.malloc.hugetlb=1
+
+    one rank      54.3 s -> 53.8 s    -0.9%
+    32 ranks      62.4 s -> 61.8 s    -0.9%
+
+Byte-identical, since nothing about the arithmetic changes.  Small, but it costs
+nothing and needs no rebuild.  Through mpirun it wants passing explicitly:
+
+    mpirun -x GLIBC_TUNABLES=glibc.malloc.hugetlb=1 -np 32 ...
+
+### Two more that were tried and are not worth it
+
+`-O2` instead of `-O3` is 1.9% slower, so the existing choice is right.
+
+Forcing the shared-memory transport, `--mca pml ob1 --mca btl self,vader`
+instead of letting Open MPI pick UCX, is 61.7 s against 62.1 s -- half a
+percent, inside the run-to-run spread, and consistent with communication not
+being what the ranks wait on.  Not worth a recommendation, but harmless if
+wanted.
 
 ### A profile is worth 4.2%, and it is byte-identical
 
