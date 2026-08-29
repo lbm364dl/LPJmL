@@ -219,6 +219,47 @@ configuration that has already been run through successfully, 4% for a
 consistency check you have already passed is a reasonable trade; for a new one
 it is not.
 
+### The lambda solve is looser than anything else here, and it is not free
+
+`water_stressed()` solves for lambda with `bisect()`, and the numbers are
+worth knowing before trusting any small change to this model:
+
+  * it does it **8.1 million times** in a three-year 1000-cell run,
+  * averaging **13.6 evaluations of `photosynthesis()`** each -- 110 million
+    calls, which is why `photosynthesis` is 8% of the profile,
+  * and **19.8% of those solves reach the iteration cap without meeting the
+    tolerance at all**, returning the best point seen instead of a root.
+
+The tolerance is `yacc = 0.001` on |f| with `xacc = 0`, so the interval test
+never fires and only |f| can stop it early.
+
+`illinois()` (regula falsi with the retained endpoint halved -- same bracket
+guarantee, superlinear instead of linear) is available under `-DFAST_LAMBDA`:
+
+    bisect,   tolerance 1e-3   54.8 s     the default, and what ships
+    illinois, tolerance 1e-3   51.8 s     -5.4%
+    illinois, tolerance 1e-7   52.4 s     -4.3%, four decades tighter
+    bisect,   tolerance 1e-7   58.3 s     +6.4%, and still not converged
+
+**It is off by default and should stay off.**  Not because it is worse -- it
+is faster at a tolerance ten thousand times tighter, which is the more
+converged answer -- but because of how far the answer moves:
+
+    illinois@1e-3 vs bisect@1e-3   p99 |rel| 1.2e-2..6.0e-2, totals 1e-4..3.9e-3
+    illinois@1e-7 vs bisect@1e-3   p99 |rel| 4.1e-2..5.0e-2, totals 1.3e-4..3.1e-3
+
+That is a hundred times the shift `-ffast-math` produces, and it is not
+rounding: both solvers satisfy |f| < 0.001, but that tolerance admits a range
+of lambda wide enough to move a GCGP field total by three parts in a thousand.
+
+The useful thing this measures is not the speedup.  It is that **this one root
+find carries a solver-dependent uncertainty of about 1-5% in individual output
+values**, which is far larger than every non-reproducible compiler option
+discussed below put together.  It is the scale against which "negligible"
+should be judged for this model -- and it says that if the lambda tolerance
+ever matters scientifically, `illinois()` reaches a much better answer for less
+time than `bisect()` reaches a worse one.
+
 ### The compiler's floating-point options
 
 Measured the same way, at one rank, against the byte-identical build at 58.2 s.
