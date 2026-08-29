@@ -295,7 +295,11 @@ rank owns which cell and nothing else:
     cost split (distorted file), unpinned      84.0 s   -12.1%
     cost split (clean file), 24 pinned         74.7 s   -21.8%
     + task weights, 24 pinned                  66.6 s   -30.3%
-    cost split, 32 ranks pinned to hwthreads   62.4 s   -34.7%   1.53x
+    cost split, 32 ranks pinned to hwthreads   61.9 s   -35.2%   1.54x
+
+Confirmed over five years, both orders: 485.8 s against 309.9 s, 1.57x,
+byte-identical.  The ratio grows with the length of the run, because the input
+reading at the start does not divide by cell cost.
 
 Pinning on its own is worse than not pinning: it fixes a bad assignment in
 place, where an unpinned run at least lets the scheduler shuffle work off the
@@ -318,6 +322,45 @@ is about 13 GB.
 
 A stale cost file costs performance and never accuracy: it can only produce a
 worse split, never a wrong answer.
+
+## Everything together
+
+Original binary and configuration against the current binary with the balanced
+configuration, global grid with river routing, one year, both orders:
+
+    original binary, default split, 24 unpinned      111.8 s
+    current binary,  cost split, 32 pinned            61.9 s   1.81x  identical
+    + the fast build (-nosafe and reassociation)      59.4 s   1.88x  moves
+
+**1.81x of it is byte-identical**, over all five outputs.  About a third is the
+compute work in the binary and two thirds the decomposition, and they compound
+because they are unrelated: one reduces the work, the other stops three
+quarters of the machine waiting for the rest.
+
+What the last line costs, against the yardstick the model supplies:
+
+                                          worst p99 |rel|   worst field total
+    whole stack vs the original               2.5e-4            7.9e-6
+    the model's own lambda-solver spread      6.5e-2            3.9e-3
+
+260 times smaller in the percentile and 490 times smaller in the totals than
+the spread between two runs that both satisfy the model's own convergence test.
+
+### Where the remaining time goes
+
+At 32 ranks the imbalance after a cost split is 1.130 and task weights do not
+improve it.  Comparing what the cost file predicts for each task against what
+the in-situ measurement recorded shows why:
+
+    predicted per-task cost   max/mean 1.002   (flat by construction)
+    measured  per-task cost   max/mean 1.131
+    correlation between them  0.071
+
+Every task measures 1.6 to 2.1 times its predicted cost, and the correlation
+between prediction and measurement is nil.  That is waiting, not working: the
+in-situ figure absorbs the time each rank spends at the eight routing exchanges
+a day.  Further balancing cannot remove it, which is why the weights worth
+10.8% at 24 ranks are worth nothing at 32.
 
 ### One grid block is not a profile of a global run
 
