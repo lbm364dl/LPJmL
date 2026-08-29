@@ -219,6 +219,58 @@ configuration that has already been run through successfully, 4% for a
 consistency check you have already passed is a reasonable trade; for a new one
 it is not.
 
+### The fastest configuration available, and what it costs
+
+Everything merged so far is byte-identical and needs no decision.  Two switches
+beyond it are not, and this is the whole picture at one rank on the 1000-cell
+three-year case:
+
+    original master                                    62.8 s
+    current master                                     54.8 s   -12.7%  identical
+      + -nosafe                                        53.9 s   -14.2%  identical
+      + -march=native -fassociative-math ...           49.3 s   -21.5%  moves
+
+    ./configure.sh -prefix $PWD -inpath <inputs> -nosafe
+    sed -i 's|^OPTFLAGS= -O3 -fno-math-errno$|& -march=native -fassociative-math \
+        -fno-signed-zeros -fno-trapping-math -freciprocal-math|' Makefile.inc
+    make clean && make -j$(nproc)
+
+How far the last step moves the answer, against the one yardstick this model
+offers for what "negligible" means:
+
+                                          worst p99 |rel|   worst field total
+    fastest build vs the default              6.2e-3            3.2e-5
+    the model's own lambda-solver spread      6.5e-2            3.9e-3
+
+The second row is not an error.  It is the difference between two runs that are
+both *correct* -- `bisect()` and `illinois()` both return a lambda satisfying
+the model's own convergence test -- and it is **ten times larger in the
+percentile and a hundred times larger in the field total** than everything the
+compiler flags do put together.
+
+So the honest statement about the fast build is not that its perturbation is
+small in the abstract.  It is that the perturbation is an order of magnitude
+below the indeterminacy the model already carries in one of its inner solves,
+and two orders below it in conserved totals.  If the lambda spread is
+acceptable -- and it has to be, since the shipped code has it -- then so is
+this.
+
+Checked again on the production configuration -- global grid, river routing,
+one year, 24 ranks -- where the deviation is smaller still, because a year has
+less time to diverge than three:
+
+                          worst p99 |rel|   worst field total
+    global, one year          2.5e-4            7.9e-6
+
+Note one inconsistency in that recipe: `-fno-trapping-math` tells the compiler
+that floating-point exceptions are not observed, while `-DWITH_FPE` installs
+handlers to observe them.  The traps become unreliable.  That is coherent with
+`-nosafe`, which has already given up the internal checks, and incoherent with
+keeping them; do not use the flags without `-nosafe`.
+
+`-DWITH_FPE` itself is free -- 54.9 s against 54.8 s, inside the noise -- so
+there is no reason to drop it on its own.
+
 ### The lambda solve is looser than anything else here, and it is not free
 
 `water_stressed()` solves for lambda with `bisect()`, and the numbers are
