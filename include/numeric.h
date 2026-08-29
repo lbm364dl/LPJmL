@@ -36,6 +36,7 @@ typedef int Seed[NSEED]; /* Seed for randfrac() random number generator */
 /* Declaration of functions */
 
 extern Real bisect(Real (*)(Real,void *),Real,Real,void *,Real,Real,int,int *); /* find zero */
+extern Real illinois(Real (*)(Real,void *),Real,Real,void *,Real,Real,int,int *); /* find zero, faster */
 extern Real leftmostzero(Real (*)(Real,void *),Real,Real,void *,Real,Real,int); /* find leftmost zero */
 extern void linreg(Real *,Real *,const Real[],int); /* linear regression */
 extern void setseed(Seed,int); /* set seed of random number generator */

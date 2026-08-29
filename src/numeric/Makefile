@@ -15,7 +15,7 @@
 
 include ../../Makefile.inc
 
-OBJS    = leftmostzero.$O bisect.$O linreg.$O date.$O interpolate.$O\
+OBJS    = leftmostzero.$O bisect.$O illinois.$O linreg.$O date.$O interpolate.$O\
           buffer.$O rand.$O petpar.$O interpolate_data.$O\
           ivec_sum.$O int2date.$O itersolve.$O\
           gammafunc.$O interpolate_data.$O\
