@@ -269,23 +269,42 @@ took:
 1.0 for the P-cores and near 0.53 for the E-cores -- a consistent 1.8x.  One
 iteration takes the imbalance to 1.095; a second barely moves the weights.
 
+### Thirty-two ranks is better than twenty-four, and needs no weights
+
+Twenty-four ranks fills the twenty-four physical cores and leaves the second
+hardware thread of each P-core idle.  Running thirty-two ranks over all
+thirty-two threads is faster, and it makes the weights unnecessary: sharing a
+P-core between two threads narrows the gap to the E-cores from 1.8x to about
+1.25x, and the imbalance after a plain cost split is already 1.130.
+
+    32 ranks, cost split, pinned to hwthreads          62.4 s
+    32 ranks, cost split, pinned, plus task weights    62.3 s   -- no better
+
+So the recommended configuration is the simpler one: a cost file, thirty-two
+ranks, pinned to hardware threads, and no weights at all.  Weights remain worth
+having at twenty-four ranks, where they are 10.8%.
+
 ### The whole ladder
 
 Global grid, river routing, one year, 24 ranks, on the production
 configuration.  Byte-identical at every step -- the decomposition decides which
 rank owns which cell and nothing else:
 
-    default split, unpinned                    95.5 s
+    default split, 24 ranks, unpinned          95.5 s    what is run now
+    default split, 24 ranks, pinned           100.0 s    +4.7%, worse
     cost split (distorted file), unpinned      84.0 s   -12.1%
-    cost split (clean file), pinned            74.7 s   -21.8%
-    + task weights, pinned                     66.6 s   -30.3%   1.43x
+    cost split (clean file), 24 pinned         74.7 s   -21.8%
+    + task weights, 24 pinned                  66.6 s   -30.3%
+    cost split, 32 ranks pinned to hwthreads   62.4 s   -34.7%   1.53x
+
+Pinning on its own is worse than not pinning: it fixes a bad assignment in
+place, where an unpinned run at least lets the scheduler shuffle work off the
+overloaded ranks.  Pin only together with a cost file.
 
 The recipe, once:
 
-    "cellcost_filename" : "/path/cost_pcore.bin",
-    "task_weights"      : [1.000, 0.961, ... , 0.527],
-
-    mpirun -np 24 --bind-to core --map-by core ...
+    bench/enable_balance.py <config.json> --cost /path/cost_pcore.bin
+    mpirun -np 32 --bind-to hwthread --map-by hwthread ...
 
 Note that the pinned numbers repeat to 0.1 s -- 66.5/66.7 and 74.6/74.7 -- while
 every unpinned 24-rank measurement in this file has a spread of several percent.
