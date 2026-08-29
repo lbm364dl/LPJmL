@@ -368,6 +368,25 @@ That is not annual imbalance.  The annual figure is only 41.36/35.69 = 1.16.
 The daily figure is much worse, because a different rank is the straggler on
 different days.
 
+### A sparse exchange instead of the collective: no difference
+
+`pnet_exchg` is an `MPI_Alltoallv` over all 32 tasks, run eight times a day --
+93,440 collectives in a simulated year.  Instrumenting it shows each task
+exchanges with only **two or three** of the others whatever the task count,
+because rivers stay inside a contiguous block of cells and cross only at its
+edges.  A collective also cannot complete until every task has entered it, so a
+task that finished its cells early waits for the slowest of all 32 rather than
+for the two it actually needs.
+
+Replacing it with `MPI_Irecv`/`MPI_Isend` to the non-empty peers only, moving
+exactly the same bytes, changes nothing:
+
+    MPI_Alltoallv          62.5 s
+    point to point         62.4 s
+
+Byte-identical, and reverted.  Open MPI already skips the zero-length messages,
+and the collective coupling is not what the tasks are waiting on.
+
 ### Routing cost cannot be put in the cost file, and trying makes it worse
 
 `drain` is the one visibly unbalanced piece left -- 4.86 s on the average rank
