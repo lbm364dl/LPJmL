@@ -780,7 +780,20 @@ translation units and how it lays the code out.
 The profile is not sensitive to the cells it was collected on.  Trained on the
 dense agricultural block, it is worth 4.2% there, 3.9% on a mixed block and
 2.3% on the sparse one, with no regression anywhere -- so a short run of any
-representative year will do.  On the production configuration, global grid with
+representative year will do.
+
+Widening the training set barely matters, which is worth knowing because it
+means the cheap thing is also the right thing.  A profile collected over 40000
+cells spanning most of the latitude range, rather than one 1000-cell block, is
+identical on the block the narrow profile was trained on and about half a
+percent to one percent better on the two it was not:
+
+    trained on            36000-36999   20000-20999   5000-5999
+    one dense block           52.3 s        24.4 s       10.4 s
+    40000 mixed cells         52.35 s       24.3 s       10.3 s
+
+Take the wider one when it is free -- it costs nothing extra and is never worse
+-- but do not build a special run for it.  On the production configuration, global grid with
 river routing at 32 ranks pinned, both orders: **62.3 s to 60.3 s, 3.2%**.
 
     bench/build_pgo.sh <a representative config.json>
