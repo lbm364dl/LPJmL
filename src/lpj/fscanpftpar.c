@@ -197,6 +197,7 @@ Bool fscanpftpar(LPJfile *file,       /**< pointer to LPJ file */
     }
     pft->name=strdup(s); /* store PFT name */
     checkptr(pft->name);
+    pft->ismaize=!strcmp(pft->name,"maize");
     fscanpftbool(verb,item,&pft->peatland,pft->name,"peatland_pft");
     if(fscankeywords(item,&pft->type,"type",config->pfttypes,config->ntypes,FALSE,verb))
     {
