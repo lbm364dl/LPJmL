@@ -144,6 +144,28 @@ What is left of `pow()` after those three is spread thin -- `f_wfps` ~5%,
 varying base to a per-soil-type real exponent, and `pedotransfer` looks like a
 constant-per-cell function but depends on soil carbon, which evolves daily.
 
+### Confirmed on the production configuration
+
+The measurements above are 1000 cells with river routing off, because routing
+needs the whole grid -- the irrigation neighbours of a subset point outside it,
+and LPJmL refuses to build the network.  The changes were therefore checked
+again on the configuration that is actually run: the full global grid, river
+routing on, one year, 24 ranks, master against the optimised build, in both
+orders so the power budget cannot favour either.
+
+    master first     master 107.4 s   optimised  92.9 s    -13.5%
+    optimised first  master 108.7 s   optimised 101.0 s     -7.1%
+    ---------------------------------------------------------------
+    mean             master 108.1 s   optimised  97.0 s    -10.3%
+
+Byte-identical in both arms, all five output files.  The spread between the two
+arms is the power-budget noise described above, about +/-3%, which is why both
+orders are needed to state a number at all.  Roughly an hour off an 11.5-hour
+run.
+
+Note that 24 is the rank ceiling here: mpirun counts the 8 P-cores and 16
+E-cores as 24 slots and refuses -np 32 without oversubscribing.
+
 ### The compiler's floating-point options
 
 Measured the same way, at one rank, against the byte-identical build at 58.2 s.
