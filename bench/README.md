@@ -219,6 +219,87 @@ configuration that has already been run through successfully, 4% for a
 consistency check you have already passed is a reasonable trade; for a new one
 it is not.
 
+## The largest number in this file: the production runs are not load balanced
+
+Everything else here is worth a few percent.  This is worth a third of the run,
+and it is not a code change -- the machinery has been in the tree since the
+first round and the production configuration does not switch it on.
+
+### What the default split costs
+
+Measure the per-cell cost of the current binary over the whole grid, split it
+into 24 equal-count blocks the way LPJmL does when given no cost file, and the
+work per rank comes out:
+
+    equal-count split, 24 tasks:   max/mean = 1.806   min/mean = 0.088
+
+The slowest rank carries 1.8 times the average work while the lightest is
+essentially idle, because the grid is ordered geographically and cost follows
+vegetation.  Every rank waits for the slowest at every routing exchange.
+
+### Measure the cost on cores of one kind
+
+A cost file records what each cell cost *on the rank that owned it*, so a file
+measured across a hybrid chip conflates cell cost with core speed: cells that
+landed on E-cores look expensive.  The first file measured this way still gave
+12%, because the vegetation signal (11.5x) is larger than the core-speed
+distortion, but it is the wrong measurement.
+
+Measure it on cores of one kind instead:
+
+    mpirun -np 8 --bind-to core --map-by core ...    # ranks 0-7 are the P-cores
+
+The two files correlate at 0.944 and differ by 23% in the median cell, and the
+clean one shows a wider true range -- heaviest/median 16.7 against 11.5, since
+the distorted file had inflated its cheap cells.
+
+### Then weight the tasks, because the cores are not alike
+
+Splitting by cost gives every rank equal *work*, which on this chip is not equal
+*time*.  Split by the clean costs, pin, and measure what each task actually
+took:
+
+    per-task time, cost-split and pinned:  min 23.7s  mean 38.1s  max 45.6s
+                                           slowest/mean 1.197
+
+    ranks 0-7   (P-cores)   ~24 s
+    ranks 8-23  (E-cores)   ~40 s
+
+`bench/cellcost.py retune` turns that into `task_weights`, which come out near
+1.0 for the P-cores and near 0.53 for the E-cores -- a consistent 1.8x.  One
+iteration takes the imbalance to 1.095; a second barely moves the weights.
+
+### The whole ladder
+
+Global grid, river routing, one year, 24 ranks, on the production
+configuration.  Byte-identical at every step -- the decomposition decides which
+rank owns which cell and nothing else:
+
+    default split, unpinned                    95.5 s
+    cost split (distorted file), unpinned      84.0 s   -12.1%
+    cost split (clean file), pinned            74.7 s   -21.8%
+    + task weights, pinned                     66.6 s   -30.3%   1.43x
+
+The recipe, once:
+
+    "cellcost_filename" : "/path/cost_pcore.bin",
+    "task_weights"      : [1.000, 0.961, ... , 0.527],
+
+    mpirun -np 24 --bind-to core --map-by core ...
+
+Note that the pinned numbers repeat to 0.1 s -- 66.5/66.7 and 74.6/74.7 -- while
+every unpinned 24-rank measurement in this file has a spread of several percent.
+Pinning removes the power-budget noise as well, because it stops the scheduler
+migrating ranks between P- and E-cores mid-run.  **Pin the benchmark even when
+you do not want the weights.**
+
+The memory high-water mark rises with balancing, 306 MB to 529 MB per rank,
+because a rank drawing cheap cells is given many more of them.  At 24 ranks that
+is about 13 GB.
+
+A stale cost file costs performance and never accuracy: it can only produce a
+worse split, never a wrong answer.
+
 ### One grid block is not a profile of a global run
 
 Every profile above until this point came from cells 36000-36999 -- dense
