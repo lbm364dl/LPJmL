@@ -23,8 +23,10 @@ typedef struct
   const char *file;
   int line;
   const char *fn;
-  long calls,repeats;
+  long calls,repeats,hits8;
   double lastx,lasty;
+  double cx[8],cy[8];      /* an 8-entry cache, to see past a 1-entry miss */
+  int nc,next;
 } PowSite;
 
 static PowSite powprof_sites[POWPROF_MAXSITE];
@@ -52,6 +54,25 @@ static double powprof_note(double x,double y,const char *file,int line,
     powprof_sites[i].repeats++;
   powprof_sites[i].lastx=x;
   powprof_sites[i].lasty=y;
+  {
+    int k,found=0;
+    for(k=0;k<powprof_sites[i].nc;k++)
+      if(powprof_sites[i].cx[k]==x && powprof_sites[i].cy[k]==y)
+      {
+        found=1;
+        break;
+      }
+    if(found)
+      powprof_sites[i].hits8++;
+    else
+    {
+      if(powprof_sites[i].nc<8)
+        powprof_sites[i].nc++;
+      powprof_sites[i].cx[powprof_sites[i].next]=x;
+      powprof_sites[i].cy[powprof_sites[i].next]=y;
+      powprof_sites[i].next=(powprof_sites[i].next+1)%8;
+    }
+  }
   return result;
 }
 
@@ -60,10 +81,11 @@ __attribute__((destructor)) static void powprof_dump(void)
   int i;
   for(i=0;i<powprof_n;i++)
     if(powprof_sites[i].calls>0)
-      fprintf(stderr,"POWPROF %-34s %s:%d calls=%ld repeat=%.1f%%\n",
+      fprintf(stderr,"POWPROF %-34s %s:%d calls=%ld repeat=%.1f%% cache8=%.1f%%\n",
               powprof_sites[i].fn,powprof_sites[i].file,powprof_sites[i].line,
               powprof_sites[i].calls,
-              100.0*powprof_sites[i].repeats/powprof_sites[i].calls);
+              100.0*powprof_sites[i].repeats/powprof_sites[i].calls,
+              100.0*powprof_sites[i].hits8/powprof_sites[i].calls);
 }
 
 #define pow(x,y) powprof_note((x),(y),__FILE__,__LINE__,__func__,(pow)((x),(y)))
