@@ -368,6 +368,55 @@ That is not annual imbalance.  The annual figure is only 41.36/35.69 = 1.16.
 The daily figure is much worse, because a different rank is the straggler on
 different days.
 
+### A sparse exchange instead of the collective: no difference
+
+`pnet_exchg` is an `MPI_Alltoallv` over all 32 tasks, run eight times a day --
+93,440 collectives in a simulated year.  Instrumenting it shows each task
+exchanges with only **two or three** of the others whatever the task count,
+because rivers stay inside a contiguous block of cells and cross only at its
+edges.  A collective also cannot complete until every task has entered it, so a
+task that finished its cells early waits for the slowest of all 32 rather than
+for the two it actually needs.
+
+Replacing it with `MPI_Irecv`/`MPI_Isend` to the non-empty peers only, moving
+exactly the same bytes, changes nothing:
+
+    MPI_Alltoallv          62.5 s
+    point to point         62.4 s
+
+Byte-identical, and reverted.  Open MPI already skips the zero-length messages,
+and the collective coupling is not what the tasks are waiting on.
+
+### Routing cost cannot be put in the cost file, and trying makes it worse
+
+`drain` is the one visibly unbalanced piece left -- 4.86 s on the average rank
+against 16.64 s on the worst -- and the cost file cannot see it, because the
+timer at `iterateyear.c:71` brackets `update_daily_cell` alone and routing
+happens in `updatedaily_grid` outside it.  Extending the bracket looks like an
+obvious eight to twelve percent.
+
+It is not.  Timing the routing call and sharing it out over the rank's cells in
+proportion to `1 + pnet_inlen` -- a constant for the per-cell passes plus the
+inflows each cell sums -- gives a cost file that is **28% slower** than the one
+that ignores routing entirely:
+
+    compute-only cost file, 32 ranks pinned    62.4 s
+    routing-aware cost file, same             79.7 s
+
+Two things go wrong, and they are the same thing twice.  Most of what `drain`
+spends is not per-cell work but waiting inside `pnet_exchg` for the other
+ranks, so charging it to cells measures the imbalance rather than the cost, and
+a cell's share depends on which rank happened to own it.  That is circular in
+exactly the way the in-situ P/E measurement was, and it shows in the numbers:
+adding a large and nearly uniform term compressed the cost range from 16.7x to
+8.2x, which moved the split back toward equal cell counts and threw away the
+compute balancing that was worth twenty percent.  The resident set falls from
+416 MB to 303 MB, which is the split collapsing toward uniform in plain sight.
+
+The general rule this is an instance of: **a cost file may only contain work
+that a cell would cost on an otherwise idle machine.**  Anything that measures
+one rank waiting for another feeds the next split its own imbalance.
+
 ### Why multi-chunk decomposition is not the answer to it
 
 The obvious fix is to give each rank cells from several latitudes so that
