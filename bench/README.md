@@ -330,6 +330,7 @@ configuration, global grid with river routing, one year, both orders:
 
     original binary, default split, 24 unpinned      111.8 s
     current binary,  cost split, 32 pinned            61.9 s   1.81x  identical
+    + -lto and a profile                              60.3 s   1.85x  identical
     + the fast build (-nosafe and reassociation)      59.4 s   1.88x  moves
 
 **1.81x of it is byte-identical**, over all five outputs.  About a third is the
@@ -579,6 +580,34 @@ discussed below put together.  It is the scale against which "negligible"
 should be judged for this model -- and it says that if the lambda tolerance
 ever matters scientifically, `illinois()` reaches a much better answer for less
 time than `bisect()` reaches a worse one.
+
+### A profile is worth 4.2%, and it is byte-identical
+
+Link-time optimisation and profile-guided optimisation were both dismissed
+early in this work, at 1% and 0.3%, before the measurement was trustworthy.
+Retried at one rank, where the repeatability is 0.1 s:
+
+    current default                          54.6 s
+    -lto                                     53.9 s   -1.3%
+    -lto with a profile                      52.3 s   -4.2%
+
+Byte-identical over the full restart state, which is what one would expect:
+neither changes the arithmetic the compiler emits, only what it inlines across
+translation units and how it lays the code out.
+
+The profile is not sensitive to the cells it was collected on.  Trained on the
+dense agricultural block, it is worth 4.2% there, 3.9% on a mixed block and
+2.3% on the sparse one, with no regression anywhere -- so a short run of any
+representative year will do.  On the production configuration, global grid with
+river routing at 32 ranks pinned, both orders: **62.3 s to 60.3 s, 3.2%**.
+
+    bench/build_pgo.sh <a representative config.json>
+
+does the three steps -- instrumented build, training run, rebuild with the
+profile and LTO -- and `./configure.sh -lto -pgo use` is the manual form.  Both
+are off by default, because the profile has to be rebuilt after a change to the
+model or the compiler optimises for the old shape of the code.  Like a stale
+cost file, a stale profile costs performance and never accuracy.
 
 ### The compiler's floating-point options
 
