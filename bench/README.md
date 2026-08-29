@@ -634,6 +634,39 @@ call was inside a commented-out DEBUG block, and it used `fscanparamreal01` --
 a macro that expands to `if(...) return TRUE;` -- as though it were an
 expression, so the file would not have compiled had the call been live.
 
+### A cost file ages, because the land use does
+
+The cost file recommended above was measured on 1901.  A 1901-2023 run does not
+stay in 1901: cropland expands, and what a cell costs expands with it.
+`cellcost.py proxy` builds a cost file straight from the land-use input for any
+year, so the drift can be measured without simulating to 2023.  Total proxied
+cost rises 24% over the period, and the split ages like this (imbalance,
+slowest task over mean):
+
+    split built from      on 1901   on 1960   on 2023   period total
+    equal cell count        1.511     1.536     1.500      23356
+    1901 only               1.002     1.044     1.390      17916
+    1960 only               1.038     1.001     1.416      18023
+    2023 only               1.243     1.198     1.001      17533
+    mean of the three       1.093     1.059     1.236      17524
+
+Three things follow.  A 1901 file holds up well to about 1960 and then decays,
+reaching 1.39 by 2023.  It is nevertheless worth having: **any** of these beats
+equal cell counts by roughly a quarter over the period, which is the number that
+matters.  And a file averaged over the period is worth a further 2.2% over a
+1901 one -- worth taking if it is free, not worth a special run.
+
+It is free after the first run.  `write_cellcost_filename` accumulates over
+every year simulated, so a full 1901-2023 run with it set produces exactly the
+period-averaged file, ready for the next run.  Set both keys on the production
+run: split by the 1901 file and write the averaged one.
+
+One caveat on these numbers.  The proxy is built from the land-use input and
+correlates with the measured cost file at 0.921, not 1.0 -- it knows how many
+crops a cell grows but not what its natural vegetation costs.  The table is
+sound about how the split *drifts*, and should not be read as a prediction of
+absolute imbalance.
+
 ### How it scales, and why the binary matters less than it looks
 
 Global grid with river routing, one year, cost split, pinned:
