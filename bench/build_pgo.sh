@@ -7,7 +7,10 @@
 # against it with link-time optimisation as well.  The profile is not sensitive
 # to which cells it was collected on -- one collected on dense agricultural
 # cells is worth 4.2% there, 3.9% on a mixed block and 2.3% on a sparse one --
-# so any representative year will do, and a short one is enough.
+# so any representative year will do, and a short one is enough.  A wider
+# training set, 40000 cells rather than 1000, is never worse and about half a
+# percent better on cells unlike the training ones, so prefer a range spanning
+# several latitudes if one is to hand.
 #
 # The profile lives in ./pgo and is reused until deleted.  Rebuild it after a
 # change to the model, or the compiler will optimise for the old shape of the
