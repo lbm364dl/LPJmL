@@ -124,6 +124,9 @@ typedef struct Pft
     int cultivation_type;       /**< cultivation_type----> NONE, BIOMASS, ANNUAL_CROP*/
     Bool nfixing;               /**< PFT can fix N (TRUE/FALSE) */
     char *name;                 /**< Pft name */
+    Bool ismaize;               /**< is this the maize PFT?  Three daily
+                                     functions used to ask strcmp() this,
+                                     tens of millions of times a run */
     Real cn[NHSG];              /**< pft specific curve number for each hydr. soil group */
     Real beta_root;             /**< root distribution parameter */
     Real rootdist[LASTLAYER];   /**< fraction of roots in upper soil layer par1*/

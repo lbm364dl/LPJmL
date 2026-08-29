@@ -40,7 +40,7 @@ void albedo_crop(Pft *pft,         /**< pointer to PFT variables */
     frs = 1;
 
   /* FPAR of green canopy excluding snow */
-  if(!strcmp(pft->par->name,"maize"))
+  if(pft->par->ismaize)
     R_tr=min(1,max(0,0.2558*max(0.01,crop->lai-crop->lai_nppdeficit)-0.0024));
   else
     R_tr=(1-exp(-pft->par->lightextcoeff*actual_lai(pft)));

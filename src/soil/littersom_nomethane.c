@@ -40,6 +40,27 @@ static Real f_ph(Real ph)
   return 0.56 + atan(M_PI*0.45*(-5 + ph)) / M_PI;
 } /* of 'f_ph' */
 
+/* Between 57% and 98% of the exp() calls below are handed the argument they
+   were handed last time: the responses do not change inside the litter loop
+   and the PFT table holds only a handful of distinct decay constants.
+   Returning a remembered result is exact -- the same argument gives the same
+   bits -- and there are a hundred million of these calls in a three-year run.
+   Not thread-safe; LPJmL divides the grid over MPI ranks and has no threads. */
+static Real decay_memo(Real *lastx,Real *lasty,Real x)
+{
+  if(*lastx==x)
+    return *lasty;
+  *lastx=x;
+  return *lasty=1.0-exp(-x);
+}
+
+static Real mx_agtop_leaf=NAN,my_agtop_leaf;
+static Real mx_agtop_wood=NAN,my_agtop_wood;
+static Real mx_agsub_leaf=NAN,my_agsub_leaf;
+static Real mx_agsub_wood=NAN,my_agsub_wood;
+static Real mx_slow=NAN,my_slow;
+static Real mx_fast=NAN,my_fast;
+
 /* q10_wood takes only a handful of distinct values over the whole PFT table --
    five in the standard parameter set, and 1.0 for every crop -- while the two
    exponents are fixed for the entire litter loop.  pow() was therefore being
@@ -80,6 +101,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
   Real fac_wfps, fac_temp;
   Real q10base[NQ10CACHE],q10agsub[NQ10CACHE],q10agtop[NQ10CACHE];
   Real q10w,p_agsub,p_agtop;
+  Real decay_bg;
   int nq10=0,q;
 #ifdef SAFE
   String line;
@@ -136,8 +158,8 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
         /* the same two decay fractions serve carbon and nitrogen; exp() is not
            free, and the compiler cannot merge the calls itself while libm may
            set errno */
-        decay_slow=1.0-exp(-(param.k_soil10.slow*response[l]));
-        decay_fast=1.0-exp(-(param.k_soil10.fast*response[l]));
+        decay_slow=decay_memo(&mx_slow,&my_slow,param.k_soil10.slow*response[l]);
+        decay_fast=decay_memo(&mx_fast,&my_fast,param.k_soil10.fast*response[l]);
         flux_soil[l].slow.carbon=max(0,soil->pool[l].slow.carbon*decay_slow);
         flux_soil[l].fast.carbon=max(0,soil->pool[l].fast.carbon*decay_fast);
         flux_soil[l].slow.nitrogen=max(0,soil->pool[l].slow.nitrogen*decay_slow);
@@ -207,6 +229,12 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
     response_agsub_leaves=response[0];
     response_bg_litter=response[0];
     response_agtop_leaves=temp_response(soil->litter.agtop_temp,soil->amean_temp[0])*fmoist_agtop;
+    /* neither factor changes inside the loop, so this is computed once */
+#ifdef LINEAR_DECAY
+    decay_bg=param.k_litter10*response_bg_litter;
+#else
+    decay_bg=1.0-exp(-(param.k_litter10*response_bg_litter));
+#endif
     for(p=0;p<soil->litter.n;p++)
     {
       /* one pointer chase for the whole item, and one evaluation of the two
@@ -244,7 +272,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
 #ifdef LINEAR_DECAY
       decay_litter=litterpft->k_litter10.leaf*response_agtop_leaves;
 #else
-      decay_litter=1.0-exp(-(litterpft->k_litter10.leaf*response_agtop_leaves));
+      decay_litter=decay_memo(&mx_agtop_leaf,&my_agtop_leaf,litterpft->k_litter10.leaf*response_agtop_leaves);
 #endif
       decom=soil->litter.item[p].agtop.leaf.carbon*decay_litter;
       soil->litter.item[p].agtop.leaf.carbon-=decom;
@@ -257,7 +285,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
 #ifdef LINEAR_DECAY
       decay_litter=litterpft->k_litter10.wood*response_agtop_wood;
 #else
-      decay_litter=1.0-exp(-(litterpft->k_litter10.wood*response_agtop_wood));
+      decay_litter=decay_memo(&mx_agtop_wood,&my_agtop_wood,litterpft->k_litter10.wood*response_agtop_wood);
 #endif
       for(i=0;i<NFUELCLASS;i++)
       {
@@ -273,7 +301,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
 #ifdef LINEAR_DECAY
       decay_litter=litterpft->k_litter10.leaf*response_agsub_leaves;
 #else
-      decay_litter=1.0-exp(-(litterpft->k_litter10.leaf*response_agsub_leaves));
+      decay_litter=decay_memo(&mx_agsub_leaf,&my_agsub_leaf,litterpft->k_litter10.leaf*response_agsub_leaves);
 #endif
       decom=soil->litter.item[p].agsub.leaf.carbon*decay_litter;
       soil->litter.item[p].agsub.leaf.carbon-=decom;
@@ -286,7 +314,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
 #ifdef LINEAR_DECAY
       decay_litter=litterpft->k_litter10.wood*response_agsub_wood;
 #else
-      decay_litter=1.0-exp(-(litterpft->k_litter10.wood*response_agsub_wood));
+      decay_litter=decay_memo(&mx_agsub_wood,&my_agsub_wood,litterpft->k_litter10.wood*response_agsub_wood);
 #endif
       for(i=0;i<NFUELCLASS;i++)
       {
@@ -299,11 +327,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
       }
 
       /* bg litter */
-#ifdef LINEAR_DECAY
-      decay_litter=param.k_litter10*response_bg_litter;
-#else
-      decay_litter=1.0-exp(-(param.k_litter10*response_bg_litter));
-#endif
+      decay_litter=decay_bg;
       decom=soil->litter.item[p].bg.carbon*decay_litter;
       soil->litter.item[p].bg.carbon-=decom;
       decom_sum.carbon+=decom;
