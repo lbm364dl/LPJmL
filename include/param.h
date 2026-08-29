@@ -31,6 +31,9 @@ typedef struct
   Error_limit error_limit; /**< limits for balance errors to stop simulation */
   Real minlandfrac; /**< minimum land area fraction */
   Real tinyfrac;    /**< minimum land-use fraction used by all_crops */
+  Real min_cropfrac; /**< crop stands holding less than this fraction of the
+                          cell are folded into the largest crop of the same
+                          irrigation regime.  0 disables it. */
   Real k_litter10;
   Poolpar k_soil10;
   Poolpar init_soiln; /**< initial soil nitrogen (gN/m2) */

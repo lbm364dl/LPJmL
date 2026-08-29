@@ -587,6 +587,49 @@ should be judged for this model -- and it says that if the lambda tolerance
 ever matters scientifically, `illinois()` reaches a much better answer for less
 time than `bisect()` reaches a worse one.
 
+## min_cropfrac: 12 to 22%, and a modelling decision rather than an optimisation
+
+Every crop of a cell carries its own soil column and its own daily water,
+nitrogen and phenology cycle, so what a cell costs is set by how many crops it
+grows and not by how much of it is cropped.  Counting the stands of the WHEP
+land use at day 200:
+
+    1000 cells, 8639 stands, 8.64 per cell
+      of which AGRICULTURE                  5507
+      crop stands below 1e-4 of the cell    2331   holding 0.005% of the area
+
+**A third of all stands hold five thousandths of a percent of the land.**
+`min_cropfrac` folds crop areas below the threshold into the largest crop of the
+same irrigation regime -- the area moves rather than disappearing, so total land
+and total cropland are unchanged.  It is read from the `param` block and
+defaults to 0, which is off and byte-identical.
+
+    min_cropfrac   time     speedup    worst p99   GCGP field total
+    off            54.6 s        --           --                 --
+    1e-5           48.0 s     12.1%         15.8              7.6%
+    1e-4           44.4 s     18.7%         18.1             11.5%
+    1e-3           42.3 s     22.5%         17.9             12.8%
+
+**This is not a performance option, and the numbers say so.**  Everything else
+in this file moves the answer by less than the model's own lambda-solver spread
+of 3.9e-3.  This moves a GCGP field total by seven to thirteen percent, because
+a crop that a cell used to grow is simply no longer there and its per-crop
+output goes with it.  The cell-level aggregates move less -- between 7e-5 and
+2.2e-2 depending on the output and the threshold -- but even the mildest setting
+moves some of them by more than everything else here put together.
+
+Whether that is acceptable is a question about the land-use data, not about
+arithmetic: it asks whether a crop occupying five thousandths of a percent of a
+grid cell deserves its own simulated soil column.  That is the modeller's call.
+It is off by default and should stay off for anything whose per-crop output
+matters.
+
+Two things about the implementation are worth recording, because both meant the
+version that sat unmeasured in `perf/multichunk` could never have worked: the
+call was inside a commented-out DEBUG block, and it used `fscanparamreal01` --
+a macro that expands to `if(...) return TRUE;` -- as though it were an
+expression, so the file would not have compiled had the call been live.
+
 ### Huge pages, for the price of an environment variable
 
 Transparent huge pages are set to `madvise` on this machine, and LPJmL never
