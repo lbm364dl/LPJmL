@@ -102,6 +102,9 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
   Real q10base[NQ10CACHE],q10agsub[NQ10CACHE],q10agtop[NQ10CACHE];
   Real q10w,p_agsub,p_agtop;
   Real decay_bg;
+  Real cshift_fast_c,cshift_slow_c,cshift_fast_n,cshift_slow_n;
+  Real nmin_base,cn_excess,nimmo_fast,nimmo_slow;
+  Bool has_c,has_n;
   int nq10=0,q;
 #ifdef SAFE
   String line;
@@ -338,13 +341,30 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
       decom_litter.nitrogen+=decom_sum.nitrogen;
       soil->decomp_litter_pft[pftid].carbon+=(1-param.atmfrac)*decom_sum.carbon;
       soil->decomp_litter_pft[pftid].nitrogen+=(1-param.atmfrac)*decom_sum.nitrogen;
+      /* None of this changes with the layer: decom_sum is finished above and
+         the fractions are parameters.  Each product keeps the grouping the
+         expression had, so every result below is bit-for-bit what it was --
+         the leading factors of a left-associated product are exactly what may
+         be lifted out of it.  cn_ratio is refused at read time unless it is
+         positive, so hoisting the division cannot divide by zero where the
+         original would not have. */
+      cshift_fast_c=param.fastfrac*(1-param.atmfrac)*decom_sum.carbon;
+      cshift_slow_c=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.carbon;
+      cshift_fast_n=param.fastfrac*(1-param.atmfrac)*decom_sum.nitrogen;
+      cshift_slow_n=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.nitrogen;
+      nmin_base=decom_sum.nitrogen*param.atmfrac;
+      cn_excess=decom_sum.carbon/soil->par->cn_ratio-decom_sum.nitrogen;
+      nimmo_fast=param.fastfrac*(1-param.atmfrac)*cn_excess;
+      nimmo_slow=(1-param.fastfrac)*(1-param.atmfrac)*cn_excess;
+      has_c=decom_sum.carbon>0;
+      has_n=decom_sum.nitrogen>0;
       forrootsoillayer(l)
       {
-        cshift_c_fast=param.fastfrac*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][pftid].fast;
-        cshift_c_slow=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.carbon*soil->c_shift[l][pftid].slow;
+        cshift_c_fast=cshift_fast_c*soil->c_shift[l][pftid].fast;
+        cshift_c_slow=cshift_slow_c*soil->c_shift[l][pftid].slow;
         soil->pool[l].fast.carbon+=cshift_c_fast;
         soil->pool[l].slow.carbon+=cshift_c_slow;
-        if(decom_sum.carbon>0 && stand->type->landusetype==NATURAL)
+        if(has_c && stand->type->landusetype==NATURAL)
         {
           getoutputindex(&stand->cell->output,CSHIFT_FAST_NV,l,config)+=cshift_c_fast;
           getoutputindex(&stand->cell->output,CSHIFT_SLOW_NV,l,config)+=cshift_c_slow;
@@ -356,22 +376,22 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
            absent from every WHEP run while still working in any methane-enabled
            test. Stand-fraction weighted, unlike _nv, because these stand types
            occupy a fraction of the cell. */
-        if(decom_sum.carbon>0 && isagriculture(stand))
+        if(has_c && isagriculture(stand))
         {
           getoutputindex(&stand->cell->output,CSHIFT_FAST_AGR,l,config)+=cshift_c_fast*stand->frac;
           getoutputindex(&stand->cell->output,CSHIFT_SLOW_AGR,l,config)+=cshift_c_slow*stand->frac;
         }
-        if(decom_sum.carbon>0 && getlandusetype(stand)==GRASSLAND)
+        if(has_c && getlandusetype(stand)==GRASSLAND)
         {
           getoutputindex(&stand->cell->output,CSHIFT_FAST_MGRASS,l,config)+=cshift_c_fast*stand->frac;
           getoutputindex(&stand->cell->output,CSHIFT_SLOW_MGRASS,l,config)+=cshift_c_slow*stand->frac;
         }
-        if(decom_sum.nitrogen>0)
+        if(has_n)
         {
-          soil->pool[l].slow.nitrogen+=(1-param.fastfrac)*(1-param.atmfrac)*decom_sum.nitrogen*soil->c_shift[l][pftid].slow;
-          soil->pool[l].fast.nitrogen+=param.fastfrac*(1-param.atmfrac)*decom_sum.nitrogen*soil->c_shift[l][pftid].fast;
+          soil->pool[l].slow.nitrogen+=cshift_slow_n*soil->c_shift[l][pftid].slow;
+          soil->pool[l].fast.nitrogen+=cshift_fast_n*soil->c_shift[l][pftid].fast;
           /* NO3 and N2O from mineralization of organic matter */
-          F_Nmineral=decom_sum.nitrogen*param.atmfrac*(param.fastfrac*soil->c_shift[l][pftid].fast+(1-param.fastfrac)*soil->c_shift[l][pftid].slow);
+          F_Nmineral=nmin_base*(param.fastfrac*soil->c_shift[l][pftid].fast+(1-param.fastfrac)*soil->c_shift[l][pftid].slow);
           soil->NH4[l]+=F_Nmineral;
 #ifdef SAFE
           if(soil->NH4[l]<-epsilon)
@@ -384,7 +404,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
         N_sum=soil->NH4[l]+soil->NO3[l];
         if(N_sum>epsilon) /* immobilization of N */
         {
-          n_immo=param.fastfrac*(1-param.atmfrac)*(decom_sum.carbon/soil->par->cn_ratio-decom_sum.nitrogen)*soil->c_shift[l][pftid].fast*N_sum/soildepth[l]*1e3/(k_N+N_sum/soildepth[l]*1e3);
+          n_immo=nimmo_fast*soil->c_shift[l][pftid].fast*N_sum/soildepth[l]*1e3/(k_N+N_sum/soildepth[l]*1e3);
           if(n_immo >0)
           {
             if(n_immo>N_sum)
@@ -407,7 +427,7 @@ Stocks littersom_nomethane(Stand *stand,                /**< pointer to stand da
         N_sum=soil->NH4[l]+soil->NO3[l];
         if(N_sum>epsilon)
         {
-          n_immo=(1-param.fastfrac)*(1-param.atmfrac)*(decom_sum.carbon/soil->par->cn_ratio-decom_sum.nitrogen)*soil->c_shift[l][pftid].slow*N_sum/soildepth[l]*1e3/(k_N+N_sum/soildepth[l]*1e3);
+          n_immo=nimmo_slow*soil->c_shift[l][pftid].slow*N_sum/soildepth[l]*1e3/(k_N+N_sum/soildepth[l]*1e3);
           if(n_immo >0)
           {
             if(n_immo>N_sum)
