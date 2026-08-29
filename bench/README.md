@@ -630,6 +630,44 @@ call was inside a commented-out DEBUG block, and it used `fscanparamreal01` --
 a macro that expands to `if(...) return TRUE;` -- as though it were an
 expression, so the file would not have compiled had the call been live.
 
+### How it scales, and why the binary matters less than it looks
+
+Global grid with river routing, one year, cost split, pinned:
+
+     4 ranks   215.0 s
+     8 ranks   127.8 s     1.68x for twice the ranks
+    16 ranks   101.1 s     1.26x
+    32 ranks    62.0 s     1.63x
+
+Thirty-two is the right number and the curve is sublinear throughout: eight
+times the ranks buys 3.5 times the speed.  The dip at sixteen is the hardware
+showing through -- with `--bind-to core`, sixteen ranks is eight P-cores plus
+eight E-cores and no weights, so half the ranks are stragglers; thirty-two takes
+all the hardware threads and the P/E gap narrows to 1.25x, as described above.
+
+The practical consequence is that **work done in the binary is worth less at
+scale than it measures at one rank**, because the machine is already saturated:
+the profile is worth 4.2% on one rank and 3.2% on thirty-two.  Both are real,
+but the decomposition is where the large number is, and a change that looks
+small on one rank will not become large on all of them.
+
+### Things tried that changed nothing
+
+Recorded so they are not retried.  All were byte-identical and none was worth
+keeping:
+
+  * `-march=native` with `-ffp-contract=off`, on its own and again on top of the
+    profile and LTO: 52.3 s either way.  The hot code is scalar libm and pointer
+    chasing through the stand and PFT lists, not loops a compiler can vectorise,
+    and a profile does not change that.
+  * `-O2` instead of `-O3`: 1.9% slower.
+  * Forcing the shared-memory transport, `--mca pml ob1 --mca btl self,vader`,
+    rather than letting Open MPI pick UCX: 61.7 s against 62.1 s, inside the
+    spread.
+  * Skipping litter items whose pools are all exactly zero, which would be
+    exact since adding 0.0 changes nothing: 0.03% of items qualify.
+  * Prefetching the bioturbation loop: marginally slower.
+
 ### Huge pages, for the price of an environment variable
 
 Transparent huge pages are set to `madvise` on this machine, and LPJmL never
