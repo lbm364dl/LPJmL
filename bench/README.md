@@ -219,6 +219,35 @@ configuration that has already been run through successfully, 4% for a
 consistency check you have already passed is a reasonable trade; for a new one
 it is not.
 
+### One grid block is not a profile of a global run
+
+Every profile above until this point came from cells 36000-36999 -- dense
+subtropical agriculture, chosen because it exercises the crop code.  Profiling
+5000-5999 instead gives a different model:
+
+                             36000-36999   5000-5999
+    littersom_nomethane          24.7%        6.1%
+    adler32_z (output deflate)    1.1%        5.8%
+    initoutputdata                0.6%        3.8%
+    photosynthesis                7.9%        5.8%
+
+Where there is little vegetation the per-cell compute nearly vanishes and the
+fixed per-cell output cost is what is left.  A global run contains a great deal
+of both kinds of cell, so a change measured on one block can be worth four
+percent on another and nothing at all where it was found.  `initoutputdata()`
+is exactly that: 4.1% on the sparse block, unmeasurable on the dense one.
+
+Profile at least two blocks before concluding where the time goes, and prefer
+the global configuration for the final number.
+
+### Output compression is worth keeping
+
+`compress: 1` costs about 3% of a global run, and turning it off makes the
+output eleven times larger -- 3.6 MB against 39 MB for a single year, so
+roughly 3.6 GB against 39 GB over 1901-2023.  With 62 GB free on this machine
+that is not a trade worth making, and deflate level 1 is already the cheapest
+setting that compresses at all.
+
 ### The fastest configuration available, and what it costs
 
 Everything merged so far is byte-identical and needs no decision.  Two switches
