@@ -335,7 +335,11 @@ configuration, global grid with river routing, one year, both orders:
     + the fast build (-nosafe and reassociation)         --    ~1.96x moves
 
 The third line is measured end to end against the original in both orders:
-111.7 and 112.0 s against 59.9 and 59.1 s.  **The whole of that 1.88x is
+111.7 and 112.0 s against 59.9 and 59.1 s.  Repeated over five years, which is
+the length that matters for a 1901-2023 run, it is 524.4 and 516.9 s against
+290.6 and 287.2 s -- **1.80x**, byte-identical, all five outputs.  The one-year
+figure is a little higher because the input reading at the start is a larger
+share of it; between them 1.8x is the number to plan with.  **The whole of that 1.88x is
 byte-identical** -- all five outputs, no exceptions -- which is where the fast
 build alone stood before any of the build and decomposition work.
 
