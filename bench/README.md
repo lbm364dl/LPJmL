@@ -144,6 +144,43 @@ What is left of `pow()` after those three is spread thin -- `f_wfps` ~5%,
 varying base to a per-soil-type real exponent, and `pedotransfer` looks like a
 constant-per-cell function but depends on soil carbon, which evolves daily.
 
+### The compiler's floating-point options
+
+Measured the same way, at one rank, against the byte-identical build at 58.2 s.
+The stock build targets generic x86-64 -- SSE2, no FMA -- on a chip that has
+AVX2 and FMA, which looked like an obvious oversight.  It is not:
+
+    -march=native -ffp-contract=off   58.1 s    0.0%   byte-identical
+    -march=native                     57.3 s    1.5%   field total moves 2.3e-5
+    -march=native -fassociative-math  55.3 s    5.0%   field total moves 7e-7..6.7e-5
+    -march=native -ffast-math         54.4 s    6.5%   field total moves 3.6e-5
+
+Widening the registers alone buys nothing, because the hot code is scalar libm
+calls and pointer chasing through the stand and PFT lists, not loops a compiler
+can vectorise.  Everything beyond that comes from reassociation, and costs bit
+reproducibility.
+
+How much it costs is worth stating precisely, because the headline number is
+alarming and the reality is not.  Under `-ffast-math`, 8% of the GCGP values
+change and the largest single relative change is 106% -- but the median change
+is zero, the 99th percentile is 4.7e-4, and the field total moves by 3.6 parts
+in 100,000 over three years.  The 106% is a value that passes through zero, so
+its relative error is meaningless.  The model amplifies rounding differences
+cell by cell while conserving the aggregate.
+
+`-ffast-math` is nonetheless the wrong choice here, and not because of the
+arithmetic.  It implies `-ffinite-math-only`, which permits GCC to fold
+`isnan()` to false, and LPJmL has 64 `isnan`/`isinf` sites -- among them the
+NetCDF climate readers, where they validate the input.  Trading away detection
+of corrupt forcing data to save 1.5% over `-fassociative-math` is a bad bargain.
+
+`-march=native -fassociative-math -fno-signed-zeros -fno-trapping-math
+-freciprocal-math` keeps NaN semantics, gets 5.0%, and introduces no non-finite
+value that was not already there.  It is left off by default: bit
+reproducibility is what made the restart bug above findable, and 5% is not
+worth losing it without the owner of the run deciding so.  To turn it on, add
+those flags to `OPTFLAGS` in `Makefile.inc` after `./configure.sh`.
+
 ## The suite
 
 `suite.sh --wait` queues the whole measurement behind whatever else is on the
