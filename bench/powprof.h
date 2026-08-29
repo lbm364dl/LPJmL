@@ -1,4 +1,5 @@
-/* Count how often each pow()/exp() call site is handed the same arguments it
+/* Count how often each pow()/exp()/log()/log10()/sqrt() call site is handed the
+   same arguments it
    was handed last time.  A site with a high repeat rate is one a single-entry
    memo would collapse, which is exactly the transformation that is exact:
    the same arguments return the same bits.
@@ -90,6 +91,9 @@ __attribute__((destructor)) static void powprof_dump(void)
 
 #define pow(x,y) powprof_note((x),(y),__FILE__,__LINE__,__func__,(pow)((x),(y)))
 #define exp(x)   powprof_note((x),0.0,__FILE__,__LINE__,__func__,(exp)((x)))
+#define log(x)   powprof_note((x),1.0,__FILE__,__LINE__,__func__,(log)((x)))
+#define log10(x) powprof_note((x),2.0,__FILE__,__LINE__,__func__,(log10)((x)))
+#define sqrt(x)  powprof_note((x),3.0,__FILE__,__LINE__,__func__,(sqrt)((x)))
 
 #endif
 #endif

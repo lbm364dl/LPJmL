@@ -722,6 +722,29 @@ individually correct and jointly wrong, suspect the build before the code.
 **Always `make clean && ./configure.sh ...` between experiments, not just
 `make clean`.**
 
+### What log, log10 and sqrt turn up: nothing worth taking
+
+Extending `powprof.h` to those three finds sites the pow/exp version could not
+see, and none of them pays:
+
+    site                       calls   repeat   memo worth
+    photosynthesis.c:172   152.6 M      20%     nothing, the check costs more
+    photosynthesis.c:105    15.0 M      87%     ~0.05 s
+    denitrification.c:73    72.3 M      50%     ~0.08 s
+    ndemand_crop.c:30        3.3 M     100%     ~0.01 s
+    ndemand_grass.c:31       2.3 M     100%     ~0.01 s
+
+Memoising the four with a usable repeat rate together is worth nothing
+measurable: 54.37 s against 54.3 s, inside the run-to-run spread.  The first
+line is the interesting one -- a hundred and fifty million square roots in the
+lambda bisection -- and it is the one a memo cannot help, because four calls in
+five would pay the comparison and get nothing back.
+
+The rule that falls out, having now done this twice: a memo pays when
+`calls * repeat_rate * (cost_of_call - cost_of_check)` clears the 0.1 s
+measurement floor, and the first batch cleared it only by taking four sites at
+once.  There is no fifth batch: this was the tail.
+
 ### Things tried that changed nothing
 
 Recorded so they are not retried.  All were byte-identical and none was worth
