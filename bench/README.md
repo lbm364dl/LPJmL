@@ -661,6 +661,25 @@ every year simulated, so a full 1901-2023 run with it set produces exactly the
 period-averaged file, ready for the next run.  Set both keys on the production
 run: split by the 1901 file and write the averaged one.
 
+Building a period-aware cost file from what is already measured does not work,
+and the reason is worth stating.  The obvious construction is to take the
+measured 1901 file and add the proxy's land-use trend to it, converting proxy
+units to seconds by the regression of one on the other:
+
+    measured_1901 = -1.97e-3 + 4.49e-3 * proxy_1901        r = 0.921
+    blended       = measured_1901 + 4.49e-3 * (mean_proxy - proxy_1901)
+
+The result is worse than the file it started from, on every year.  The
+evaluation is the problem, not only the construction: scoring a split built
+from *measured* costs against *proxy* costs mixes two things that agree only to
+r=0.921, and the mismatch swamps the drift being corrected for.  The drift table
+above is sound because it is proxy against proxy throughout.
+
+There is no way around this without real cost measurements from the later years,
+which means simulating to them.  That is exactly what the production run does,
+so the answer remains: write the cost file out during the run and use it for the
+next one.
+
 One caveat on these numbers.  The proxy is built from the land-use input and
 correlates with the measured cost file at 0.921, not 1.0 -- it knows how many
 crops a cell grows but not what its natural vegetation costs.  The table is
