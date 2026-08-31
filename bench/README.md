@@ -614,6 +614,46 @@ defaults to 0, which is off and byte-identical.
     1e-4           44.4 s     18.7%         18.1             11.5%
     1e-3           42.3 s     22.5%         17.9             12.8%
 
+### Decided: on, at 1e-4
+
+Tracing the land-use input settles what the small fractions are.
+`prepare_spatialize_all.R` in WHEP joins national crop areas to grid cells
+cartesian -- its own comment reads "each country-crop gets its cells" -- and
+allocates them proportionally, filtering only exact zeros.  So every crop a
+country reports lands in every cropland cell of that country, and what survives
+into the file is not a measurement:
+
+    smallest nonzero value in the file      1.401e-45  (denormal float32)
+    entries below 1e-15                         1.11%
+    entries below one hectare of the cell       21.9%  holding 0.0004% of area
+    crops present per cell, of 32                 9.1
+
+The right measure of what folding them costs is the model's own global totals,
+not the per-crop field sums quoted below -- those count a crop vanishing from
+one cell the same as a major crop changing, and overstate it by two orders of
+magnitude:
+
+                        baseline   1e-5    1e-4    1e-3
+    NPP (PgC/yr)            0.92   0.92    0.92    0.92
+    SoilC (PgC)             44.2   44.3    44.3    44.3
+    VegC (PgC)              10.6   10.6    10.6    10.6
+    transpiration (km3)    579.4  580.0   580.2   580.4
+    evaporation (km3)      180.2  180.2   180.1   179.2
+
+Carbon pools do not move to three figures; water moves by a tenth of a percent.
+No crop is erased either: across all 32, each keeps between 97.4% and 99.98% of
+its own area at 1e-4.
+
+`min_cropfrac` is therefore **1e-4 in par/lpjparam.cjson**, which is 18.7%
+faster.  A configuration written by lpjmlkit carries its own copy of the
+parameters, so one generated before this change needs
+`bench/enable_balance.py <config> --min-cropfrac 1e-4`.
+
+The denormals are reported upstream as eduaguilera/whep#985; if they are fixed
+at source this threshold can come down.
+
+### The reasoning that led there
+
 **This is not a performance option, and the numbers say so.**  Everything else
 in this file moves the answer by less than the model's own lambda-solver spread
 of 3.9e-3.  This moves a GCGP field total by seven to thirteen percent, because
