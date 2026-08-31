@@ -15,7 +15,7 @@
 
 include ../../Makefile.inc
 
-OBJS    = update_daily_cell.$O update_annual_cell.$O init_annual.$O\
+OBJS    = divide_cells.$O writecellcost.$O trace_day.$O update_daily_cell.$O update_annual_cell.$O init_annual.$O\
           update_monthly_grid.$O newgrid.$O iterate.$O  outputindex.$O\
           iterateyear.$O initoutput.$O fopenoutput.$O getb.$O\
           fcloseoutput.$O fprintincludes.$O flux_sum.$O\

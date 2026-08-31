@@ -17,7 +17,11 @@
 CC	= mpicc
 DEBUGFLAGS  = -g
 CHECKFLAGS = -fsanitize=address -fsanitize=bounds -fsanitize=undefined
-OPTFLAGS= -O3
+# -fno-math-errno lets the compiler treat the libm calls as the pure
+# functions they are. It does not change any computed value -- only whether
+# errno is set -- and it is what allows dead and duplicated calls to be
+# removed. Verified byte-identical on a full-grid run.
+OPTFLAGS= -O3 -fno-math-errno
 WFLAG	= -Wall -m64
 LPJFLAGS  = -DUSE_RAND48 -DUSE_MPI -DSAFE -DWITH_FPE -DUSE_NETCDF -DUSE_UDUNITS -DPERMUTE -DSTRICT_JSON
 O	= o

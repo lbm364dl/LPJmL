@@ -23,6 +23,7 @@ static Bool fwritecropdatesitem(Bstruct file,const Cropdates *cropdates)
   bstruct_writeint(file,"last_update_spring",cropdates->last_update_spring);
   bstruct_writeint(file,"vern_date20",cropdates->vern_date20);
   bstruct_writeint(file,"last_update_vern",cropdates->last_update_vern);
+  bstruct_writeintarray(file,"fallow",cropdates->fallow,2);
   return bstruct_writeendstruct(file);
 } /* of 'fwritecropdatesitem' */
 

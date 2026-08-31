@@ -14,6 +14,16 @@
 
 #include "lpj.h"
 
+static Real logistic(Real a)
+{
+  /* 1/(1+exp(a)).  Below -37 the exponential is smaller than 2^-53, so 1+exp(a)
+     is exactly 1 and the result is exactly 1 -- but glibc reaches that answer
+     through its underflow path, and a profile put 3% of the whole run there,
+     called from here.  The upper end is already guarded by the caller for
+     light, and overflow would trap anyway with WITH_FPE. */
+  return (a < -37) ? 1.0 : 1/(1+exp(a));
+} /* of 'logistic' */
+
 void phenology_gsi(Pft *pft,    /**< pointer to PFT variables */
                    Real temp,   /**< temperature (deg C) */
                    Real light,  /**< light, i.e. shortwave-downward radiation (W m-2) */
@@ -32,20 +42,20 @@ void phenology_gsi(Pft *pft,    /**< pointer to PFT variables */
   Phen_param wscalpar = getpftpar(pft, wscal);
 
   /* cold temperature response function */
-  pft->phen_gsi.tmin += ( 1 / (1 + exp(-tminpar.sl * (temp - tminpar.base))) - pft->phen_gsi.tmin) * tminpar.tau;
+  pft->phen_gsi.tmin += ( logistic(-tminpar.sl * (temp - tminpar.base)) - pft->phen_gsi.tmin) * tminpar.tau;
   pft->phen_gsi.tmin=max(epsilon,pft->phen_gsi.tmin);
   /* heat stress response function */
-  pft->phen_gsi.tmax += ( 1 / (1 + exp(tmaxpar.sl * (temp - tmaxpar.base))) - pft->phen_gsi.tmax) * tmaxpar.tau;
+  pft->phen_gsi.tmax += ( logistic(tmaxpar.sl * (temp - tmaxpar.base)) - pft->phen_gsi.tmax) * tmaxpar.tau;
   pft->phen_gsi.tmax=max(epsilon,pft->phen_gsi.tmax);
 
   /* photosynthetic active radiation response function */
   if(-lightpar.sl * (light - lightpar.base)<200) /* check to avoid overflow in exp function */
-    pft->phen_gsi.light += ( 1 / (1 + exp(-lightpar.sl * (light - lightpar.base))) - pft->phen_gsi.light) * lightpar.tau;
+    pft->phen_gsi.light += ( logistic(-lightpar.sl * (light - lightpar.base)) - pft->phen_gsi.light) * lightpar.tau;
   else
     pft->phen_gsi.light -=pft->phen_gsi.light * lightpar.tau;
   pft->phen_gsi.light=max(epsilon,pft->phen_gsi.light);
   /* water availability response function */
-  pft->phen_gsi.wscal += ( 1 / (1 + exp(-wscalpar.sl * (pft->wscal*100 - wscalpar.base))) - pft->phen_gsi.wscal) * wscalpar.tau;
+  pft->phen_gsi.wscal += ( logistic(-wscalpar.sl * (pft->wscal*100 - wscalpar.base)) - pft->phen_gsi.wscal) * wscalpar.tau;
   pft->phen_gsi.wscal=max(epsilon,pft->phen_gsi.wscal);
   if(istree(pft))
   {

@@ -28,14 +28,16 @@
 #include "types.h"
 #include "pnet.h"
 
-Pnet *pnet_init(
+Pnet *pnet_init_bounds(
 #ifdef USE_MPI
                 MPI_Comm comm,     /**< MPI communicator */
                 MPI_Datatype type, /**< MPI datatype of grid element */
 #else
                 int size,          /**< size of grid element */
 #endif
-                int n /**< size of grid */
+                int n,             /**< size of grid */
+                const int counts[] /**< number of elements of each task, or NULL
+                                        for the same number for every task */
                )      /** \return initialized pnet structure or NULL */
 {
   int slice,rem,i;
@@ -68,26 +70,33 @@ Pnet *pnet_init(
     return NULL;
   }
 #endif
-  /* calculate lower and upper bound of local subgrid */
-  slice=pnet->n/pnet->ntask;
-  rem=pnet->n % pnet->ntask; /* calculate remainder */
-  pnet->lo=pnet->taskid*slice;
-  pnet->hi=(pnet->taskid+1)*slice-1;
-  /* distribute remainder */
-  if(pnet->taskid<rem)
+  /* record the bounds of every task, so that pnet_setup() and pnet_reverse()
+     agree with the caller instead of each deriving a uniform split */
+  pnet->bounds=newvec(int,pnet->ntask+1);
+  if(pnet->bounds==NULL)
   {
-    pnet->lo+=pnet->taskid;
-    pnet->hi+=pnet->taskid+1;
+    free(pnet);
+    return NULL;
+  }
+  pnet->bounds[0]=0;
+  if(counts==NULL)
+  {
+    slice=pnet->n/pnet->ntask;
+    rem=pnet->n % pnet->ntask; /* calculate remainder */
+    for(i=0;i<pnet->ntask;i++)
+      pnet->bounds[i+1]=pnet->bounds[i]+slice+((i<rem) ? 1 : 0);
   }
   else
-  {
-    pnet->lo+=rem;
-    pnet->hi+=rem;
-  }
+    for(i=0;i<pnet->ntask;i++)
+      pnet->bounds[i+1]=pnet->bounds[i]+counts[i];
+  /* lower and upper bound of local subgrid */
+  pnet->lo=pnet->bounds[pnet->taskid];
+  pnet->hi=pnet->bounds[pnet->taskid+1]-1;
   /* allocate memory for connection list array */
   pnet->connect=newvec2(Intlist,pnet->lo,pnet->hi);
   if(pnet->connect==NULL) /* was memory allocation successful? */
   {
+    free(pnet->bounds);
     free(pnet);
     return NULL; /* no, return NULL */
   }
@@ -99,6 +108,7 @@ Pnet *pnet_init(
   if(pnet->outdisp==NULL)
   {
     freevec(pnet->connect,pnet->lo,pnet->hi);
+    free(pnet->bounds);
     free(pnet);
     return NULL;
   }
@@ -107,6 +117,7 @@ Pnet *pnet_init(
   {
     free(pnet->outdisp);
     freevec(pnet->connect,pnet->lo,pnet->hi);
+    free(pnet->bounds);
     free(pnet);
     return NULL;
   }
@@ -116,6 +127,7 @@ Pnet *pnet_init(
     free(pnet->outdisp);
     free(pnet->indisp);
     freevec(pnet->connect,pnet->lo,pnet->hi);
+    free(pnet->bounds);
     free(pnet);
     return NULL;
   }
@@ -126,8 +138,27 @@ Pnet *pnet_init(
     free(pnet->outdisp);
     free(pnet->indisp);
     freevec(pnet->connect,pnet->lo,pnet->hi);
+    free(pnet->bounds);
     free(pnet);
     return NULL;
   }
   return pnet;
+} /* of 'pnet_init_bounds' */
+
+Pnet *pnet_init(
+#ifdef USE_MPI
+                MPI_Comm comm,     /**< MPI communicator */
+                MPI_Datatype type, /**< MPI datatype of grid element */
+#else
+                int size,          /**< size of grid element */
+#endif
+                int n /**< size of grid */
+               )      /** \return initialized pnet structure or NULL */
+{
+  /* the historical entry point: every task gets the same number of elements */
+#ifdef USE_MPI
+  return pnet_init_bounds(comm,type,n,NULL);
+#else
+  return pnet_init_bounds(size,n,NULL);
+#endif
 } /* of 'pnet_init' */

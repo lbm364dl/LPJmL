@@ -51,6 +51,22 @@ Bool mpi_openclimate_netcdf(Climatefile *file,        /**< climate data file */
   MPI_Bcast(&file->delta_year,1,MPI_INT,0,config->comm);
   MPI_Bcast(&file->isleap,1,MPI_INT,0,config->comm);
   MPI_Bcast(&file->n,1,MPI_INT,0,config->comm);
+  /* file->n is the size of this task's data buffer, so it is derived from the
+     number of cells this task owns and must not be taken from the root task.
+     Broadcasting it only worked while every task held the same number of
+     cells, which stops being true as soon as the grid is split by cost. */
+  switch(file->time_step)
+  {
+    case DAY:
+      file->n=config->ngridcell*NDAYYEAR;
+      break;
+    case MONTH:
+      file->n=config->ngridcell*NMONTH;
+      break;
+    default:
+      file->n=config->ngridcell;
+      break;
+  }
   MPI_Bcast(&file->firstyear,1,MPI_INT,0,config->comm);
   MPI_Bcast(&file->nyear,1,MPI_INT,0,config->comm);
   MPI_Bcast(&file->nlon,sizeof(size_t),MPI_BYTE,0,config->comm);

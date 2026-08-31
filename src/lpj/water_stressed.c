@@ -15,6 +15,17 @@
 #include "lpj.h"
 
 #define EPSILON 0.001  /* min precision of solution in bisection method */
+
+/* bisect() needs 13.6 evaluations of fcn() on average to solve for lambda, and
+   a fifth of the time it runs to the iteration cap without reaching EPSILON at
+   all and returns its best point instead.  illinois() brackets the root just
+   as safely and gets there in far fewer, but it does not land on the same
+   lambda, so it is opt-in: the default build stays bit-reproducible. */
+#ifdef FAST_LAMBDA
+#define findlambda illinois
+#else
+#define findlambda bisect
+#endif  /* min precision of solution in bisection method */
 #define k 0.1          /* steepness parameter for inundation stress */
 
 typedef struct
@@ -229,7 +240,7 @@ Real water_stressed(Pft *pft,                  /**< [inout] pointer to PFT varia
     data.apar=par*(1-getpftpar(pft, albedo_leaf))*alphaa(pft,config->laimax_manage)*fpar(pft); /** par calculation do not include albedo*/
     data.daylength=daylength;
     data.vmax=pft->vmax;
-    lambda=bisect(fcn,0.02,LAMBDA_OPT+0.05,&data,0,EPSILON,30,&iter);
+    lambda=findlambda(fcn,0.02,LAMBDA_OPT+0.05,&data,0,EPSILON,30,&iter);
     adtmm=photosynthesis(&agd,rd,&pft->vmax,data.path,lambda,data.tstress,data.b,data.co2,
                          temp,data.apar,daylength,TRUE);
     vmax=pft->vmax;
@@ -255,7 +266,7 @@ Real water_stressed(Pft *pft,                  /**< [inout] pointer to PFT varia
         gpd=hour2sec(daylength)*(gc-pft->par->gmin*fpar(pft));
         data.fac=gpd/1.6*ppm2bar(co2);
         data.vmax=pft->vmax;
-        lambda=bisect(fcn,0.02,lambda,&data,0,EPSILON,20,&iter);
+        lambda=findlambda(fcn,0.02,lambda,&data,0,EPSILON,20,&iter);
         adtmm=photosynthesis(&agd,rd,&pft->vmax,data.path,lambda,data.tstress,data.b,data.co2,
                              temp,data.apar,daylength,FALSE);
         gc=(1.6*adtmm/(ppm2bar(co2)*(1.0-lambda)*hour2sec(daylength)))+

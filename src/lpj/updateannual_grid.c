@@ -37,7 +37,7 @@ void updateannual_grid(Outputfile *output,  /**< Output file data */
                       )
 {
 #ifdef USE_TIMING
-  double t;
+  double t,tcell;
 #ifdef USE_MPI
   double t2;
 #endif
@@ -52,7 +52,13 @@ void updateannual_grid(Outputfile *output,  /**< Output file data */
     if(!grid[cell].skip)
     {
       grid[cell].landcover=(config->prescribe_landcover!=NO_LANDCOVER) ? getlandcover(landcover,cell) : NULL;
+#ifdef USE_TIMING
+      timing_start(tcell);
+#endif
       update_annual_cell(grid+cell,npft,ncft,year,isdailytemp,intercrop,config);
+#ifdef USE_TIMING
+      timing_stop(UPDATE_ANNUAL_CELL_FCN,tcell);
+#endif
 #ifdef SAFE
       if(config->withlanduse)
         check_fluxes(grid+cell,year,cell,config);

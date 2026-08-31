@@ -27,15 +27,24 @@ Real temp_stress(const Pftpar *pftpar, /**< PFT parameter */
                  Real daylength        /**< day length (h) */
                 )                      /** \return temperature stress */
 {
+  /* pure in its three arguments, and called with the same three repeatedly:
+     the PFT list is walked for every stand and the temperature is the cell's */
+  static const Pftpar *lpar=NULL;
+  static Real lt=0,ld=0,lv=0;
   Real low,high;
+  if(lpar==pftpar && temp==lt && daylength==ld)
+    return lv;
+  lpar=pftpar;
+  lt=temp;
+  ld=daylength;
   if(daylength<0.01 || (pftpar->path==C3 && temp>tmc3) 
                     || (pftpar->path==C4 && temp>tmc4))
-    return 0.0;
+    return lv=0.0;
   if(temp<pftpar->temp_co2.high)
   {
     low=1/(1+exp(pftpar->k1*(pftpar->k2-temp)));
     high=1-0.01*exp(pftpar->k3*(temp-pftpar->temp_photos.high));
-    return low*high;
+    return lv=low*high;
   }
-  return 0.0;
+  return lv=0.0;
 } /* of 'temp_stress' */

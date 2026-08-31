@@ -915,6 +915,19 @@ void fprintconfig(FILE *file,          /**< File pointer to text output file */
       fprintf(file,"Index of first cell:         %8d\n",config->firstgrid);
     fprintf(file,"Number of grid cells:        %8d\n",config->nall);
   }
+  if(config->cellcost_filename!=NULL)
+    fprintf(file,"Cells distributed by cost from '%s'.\n",config->cellcost_filename);
+  if(config->task_weights!=NULL)
+  {
+    int t;
+    fputs("Task weights:",file);
+    for(t=0;t<config->ntask;t++)
+      fprintf(file," %g",config->task_weights[t]);
+    fputc('\n',file);
+  }
+  if(config->write_cellcost_filename!=NULL)
+    fprintf(file,"Cell cost will be measured and written to '%s'.\n",
+            config->write_cellcost_filename);
   fputs("==============================================================================\n",file);
   fflush(file);
 } /* of 'fprintconfig' */

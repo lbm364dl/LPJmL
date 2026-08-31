@@ -6,7 +6,7 @@
 ##   configure script to copy appropriate Makefile.$osname                     ##
 ##                                                                             ##
 ##   Usage: configure.sh [-h] [-v] [-l] [-prefix dir] [-inpath dir] [-debug]   ##
-##                       [-check] [-with_timing] [-nompi] [-noerror]           ##
+##                       [-check] [-with_timing] [-nompi] [-noerror] [-nosafe]  ##
 ##                       [-Dmacro[=value] ...]                                 ##
 ##                                                                             ##
 ## (C) Potsdam Institute for Climate Impact Research (PIK), see COPYRIGHT file ##
@@ -16,7 +16,7 @@
 ## Contact: https://github.com/PIK-LPJmL/LPJmL                                 ##
 #################################################################################
 
-USAGE="Usage: $0 [-h] [-v] [-l] [-prefix dir] [-inpath dir] [-debug] [-with_timing] [-nompi] [-check] [-check_balance] [-noerror] [-Dmacro[=value] ...]"
+USAGE="Usage: $0 [-h] [-v] [-l] [-prefix dir] [-inpath dir] [-debug] [-with_timing] [-nompi] [-check] [-check_balance] [-noerror] [-nosafe] [-lto] [-pgo gen|use] [-Dmacro[=value] ...]"
 ERR_USAGE="\nTry \"$0 --help\" for more information."
 debug=0
 nompi=0
@@ -25,6 +25,10 @@ checking=""
 macro=""
 inpath=""
 warning="-Werror"
+nosafe=0
+lto=0
+pgo=""
+pgodir=$PWD/pgo
 while(( "$#" )); do
   case "$1" in
     -h|--help)
@@ -43,6 +47,13 @@ while(( "$#" )); do
       echo "-check          enable run-time checking of memory leaks and access out of bounds"
       echo "-check_balance  enable balance checking in lpj functions"
       echo "-noerror        do not stop compilation on warnings"
+      echo "-nosafe         drop the SAFE consistency checks (about 4% faster,"
+      echo "                and byte-identical while none of them would fire,"
+      echo "                but a run that goes wrong then does so silently)"
+      echo "-lto            link-time optimisation, worth about 1.3%, byte-identical"
+      echo "-pgo gen        build instrumented, to collect a profile first"
+      echo "-pgo use        build against a collected profile; with -lto worth"
+      echo "                about 4.2%, byte-identical. See bench/build_pgo.sh"
       echo "-nompi          do not build MPI version"
       echo "-Dmacro[=value] define macro for compilation"
       echo
@@ -92,6 +103,28 @@ while(( "$#" )); do
     -noerror)
       warning=""
       shift 1
+      ;;
+    -nosafe)
+      nosafe=1
+      shift 1
+      ;;
+    -lto)
+      lto=1
+      shift 1
+      ;;
+    -pgo)
+      if [ $# -lt 2 ]
+      then
+        echo >&2 "Error: argument missing for -pgo option."
+        echo >&2 -e "$ERR_USAGE"
+        exit 1
+      fi
+      case "$2" in
+        gen|generate) pgo=gen ;;
+        use)          pgo=use ;;
+        *) echo >&2 "Error: -pgo takes 'gen' or 'use', not '$2'."; exit 1 ;;
+      esac
+      shift 2
       ;;
     -nompi)
       nompi=1
@@ -194,6 +227,33 @@ else
   echo >&2 Warning: unsupported operating system, Makefile.$osname created
   cp config/Makefile.gcc Makefile.$osname
   cp config/Makefile.$osname Makefile.inc
+fi
+if [ "$nosafe" = "1" ]
+then
+  # The SAFE blocks are pure checks: they test for states that should not
+  # arise and call fail() if one does.  While none of them fires the results
+  # are identical, and they cost about 4% -- most of it in littersom and
+  # infil_perc, which carry nineteen of them between them.
+  sed -i "s/-DSAFE //;s/ -DSAFE//" Makefile.inc
+fi
+if [ "$lto" = "1" ]
+then
+  # Byte-identical: -flto changes what the compiler may inline across
+  # translation units, not the arithmetic it emits.
+  sed -i "s|^OPTFLAGS= .*|& -flto=auto -ffat-lto-objects|" Makefile.inc
+fi
+if [ "$pgo" = "gen" ]
+then
+  mkdir -p "$pgodir"
+  sed -i "s|^OPTFLAGS= .*|& -fprofile-generate -fprofile-dir=$pgodir|" Makefile.inc
+elif [ "$pgo" = "use" ]
+then
+  if [ ! -d "$pgodir" ]
+  then
+    echo >&2 "Error: no profile in $pgodir. Build with '-pgo gen' and run once first."
+    exit 1
+  fi
+  sed -i "s|^OPTFLAGS= .*|& -fprofile-use -fprofile-dir=$pgodir -fprofile-correction -Wno-missing-profile|" Makefile.inc
 fi
 if [ "$debug" = "1" ]
 then

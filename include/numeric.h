@@ -36,13 +36,26 @@ typedef int Seed[NSEED]; /* Seed for randfrac() random number generator */
 /* Declaration of functions */
 
 extern Real bisect(Real (*)(Real,void *),Real,Real,void *,Real,Real,int,int *); /* find zero */
+extern Real illinois(Real (*)(Real,void *),Real,Real,void *,Real,Real,int,int *); /* find zero, faster */
 extern Real leftmostzero(Real (*)(Real,void *),Real,Real,void *,Real,Real,int); /* find leftmost zero */
 extern void linreg(Real *,Real *,const Real[],int); /* linear regression */
 extern void setseed(Seed,int); /* set seed of random number generator */
 extern Bool freadseed(Bstruct,const char *,Seed);
 extern Bool fwriteseed(Bstruct,const char *,const Seed);
 extern Real randfrac(int *); /* random number generator */
+/* The parts of petpar() that depend on the cell and the day but not the stand */
+typedef struct
+{
+  Real daylength; /**< daylength (h) */
+  Real par;       /**< photosynthetic active radiation flux */
+  Real eeqfac;    /**< s/(s+gamma)/lambda, the temperature-dependent factor */
+  Real lw;        /**< longwave flux after the downward correction (W m-2) */
+  Real swdown;    /**< shortwave downward flux (W m-2) */
+} Petpar;
+
 extern void petpar(Real *,Real *,Real *,Real,int,Real,Real,Real,Bool,Real);
+extern void petpar_cell(Petpar *,Real,int,Real,Real,Real,Bool);
+extern void petpar_stand(Real *,Real *,Real *,const Petpar *,Real);
 extern int ivec_sum(const int[],int); /* vector sum of integers */
 extern Real gammq(Real,Real);
 extern void gcf(Real *, Real, Real, Real *);

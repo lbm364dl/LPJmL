@@ -109,7 +109,7 @@ Bool receive_image_luc(Cell *grid,          /**< LPJ grid */
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   if(mpi_read_socket(config->in,image_data,MPI_FLOAT,config->nall,counts,
                      offsets,config->rank,config->comm))
   {
@@ -277,7 +277,7 @@ Bool receive_image_luc(Cell *grid,          /**< LPJ grid */
   check(counts);
   offsets=newvec(int,config->ntask);
   check(offsets);
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   MPI_Type_contiguous(NIMAGETREEPARTS,MPI_FLOAT,&datatype);
   MPI_Type_commit(&datatype);
 
@@ -390,7 +390,7 @@ Bool receive_image_luc(Cell *grid,          /**< LPJ grid */
   /*printf("getting crop shares multiarray %d (DYNgridreal)\n",
   config->ngridcell*NIMAGECROPS);*/
 #ifdef USE_MPI
-  getcounts(counts,offsets,config->nall,NIMAGECROPS,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,NIMAGECROPS,config->ntask);
   if(mpi_read_socket(config->in,image_landuse,MPI_FLOAT,config->nall*NIMAGECROPS,
                      counts,offsets,config->rank,config->comm))
   {

@@ -23,6 +23,27 @@
 #define maxWTP -500 /* max height of standing water [mm]*/
 #define MAXITER 1000 /* maximum number of iterations */
 
+/* Neither term below depends on the tillage layer, and the depth term does not
+   change at all once the soil parameters are read, yet both sat inside the
+   loop: fourteen million pow() calls and as many exp() in a three-year run.
+   Hoisting them leaves the arithmetic exactly as it was. */
+static Real tillage_depth_term(void)
+{
+  static Real cached=0;
+  if(cached==0)
+    cached=pow(soildepth[NTILLLAYER-1]/1000,0.6);
+  return cached;
+}
+
+static Real tillage_sand_term(Real sand)
+{
+  static Real lastsand=NAN,lastval;
+  if(lastsand==sand)      /* every stand in a cell sees the same soil */
+    return lastval;
+  lastsand=sand;
+  return lastval=2.0*sand*100 / (sand*100 + exp(8.597 - 0.075*sand*100));
+}
+
 static int findwtlayer(const Soil *soil)
 {
   int l,lwt;              /**< layer index, index of layer in which the water table is located */
@@ -512,11 +533,15 @@ Real infil_perc(Stand *stand,        /**< Stand pointer */
       soil->rw_buffer=param.rw_buffer_max;
     }
   }
-  for(l=0;l<NTILLLAYER;l++)
   {
-    sz = 0.2*infil_layer[l]*(1.0 + 2.0*stand->soil.par->sand*100 / (stand->soil.par->sand*100 + exp(8.597 - 0.075*stand->soil.par->sand*100))) / pow(soildepth[NTILLLAYER-1]/1000,0.6);
-    f = sz / (sz + exp(3.92 - 0.0226*sz));
-    stand->soil.df_tillage[l]+=f*(1 - stand->soil.df_tillage[l]);
+    Real till_sand=tillage_sand_term(stand->soil.par->sand);
+    Real till_depth=tillage_depth_term();
+    for(l=0;l<NTILLLAYER;l++)
+    {
+      sz = 0.2*infil_layer[l]*(1.0 + till_sand) / till_depth;
+      f = sz / (sz + exp(3.92 - 0.0226*sz));
+      stand->soil.df_tillage[l]+=f*(1 - stand->soil.df_tillage[l]);
+    }
   }
 
   lwt=findwtlayer(soil);
@@ -1146,11 +1171,15 @@ Real infil_perc(Stand *stand,        /**< Stand pointer */
       soil->rw_buffer=param.rw_buffer_max;
     }
   }
-  for(l=0;l<NTILLLAYER;l++)
   {
-    sz = 0.2*infil_layer[l]*(1.0 + 2.0*stand->soil.par->sand*100 / (stand->soil.par->sand*100 + exp(8.597 - 0.075*stand->soil.par->sand*100))) / pow(soildepth[NTILLLAYER-1]/1000,0.6);
-    f = sz / (sz + exp(3.92 - 0.0226*sz));
-    stand->soil.df_tillage[l]+=f*(1 - stand->soil.df_tillage[l]);
+    Real till_sand=tillage_sand_term(stand->soil.par->sand);
+    Real till_depth=tillage_depth_term();
+    for(l=0;l<NTILLLAYER;l++)
+    {
+      sz = 0.2*infil_layer[l]*(1.0 + till_sand) / till_depth;
+      f = sz / (sz + exp(3.92 - 0.0226*sz));
+      stand->soil.df_tillage[l]+=f*(1 - stand->soil.df_tillage[l]);
+    }
   }
 
 

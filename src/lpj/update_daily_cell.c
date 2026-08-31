@@ -62,6 +62,9 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
   Real nh3;
   int l,i;
   Real prec_save;
+  Petpar petpar_day;          /* the parts of petpar() shared by all stands */
+  Real bioturb,bioturb_keep;  /* bioturbation transfer and retention fractions */
+  Litteritem *litteritem;
   Real agrfrac;
   Real gsi;
   Real litsum_old_nv[2]={0,0},litsum_new_nv[2]={0,0};
@@ -74,7 +77,7 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
   Real eet_lake=0;
   Real rice_emiss=0;
 #ifdef USE_TIMING
-  double tstart;
+  double tstart,tstand;
   timing_start(tstart);
 #endif
   if(!cell->skip)
@@ -185,19 +188,31 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
     agrfrac=0;
     cell->balance.ricefrac=0;
 
+    /* solar geometry, the longwave correction and the vapour-pressure slope
+       depend on the cell and the day, not on the stand; albedo is the only
+       per-stand input and enters through petpar_stand() */
+    petpar_cell(&petpar_day,cell->coord.lat,day,climate->temp,climate->lwnet,
+                climate->swdown,config->radiation_lwdown);
+
     foreachstand(stand,s,cell->standlist)
     {
       if(isagriculture(stand))
         agrfrac+=stand->frac;
+      /* param is a global, and the stores below could alias it as far as the
+         compiler knows, so both factors were reloaded and recomputed on every
+         one of the four statements */
+      bioturb=param.bioturbate;
+      bioturb_keep=1-param.bioturbate;
       for(l=0;l<stand->soil.litter.n;l++)
       {
-        stand->soil.litter.item[l].agsub.leaf.carbon += stand->soil.litter.item[l].agtop.leaf.carbon*param.bioturbate;
-        stand->soil.litter.item[l].agtop.leaf.carbon *= (1 - param.bioturbate);
-        stand->soil.litter.item[l].agsub.leaf.nitrogen += stand->soil.litter.item[l].agtop.leaf.nitrogen*param.bioturbate;
-        stand->soil.litter.item[l].agtop.leaf.nitrogen *= (1 - param.bioturbate);
+        litteritem=stand->soil.litter.item+l;
+        litteritem->agsub.leaf.carbon += litteritem->agtop.leaf.carbon*bioturb;
+        litteritem->agtop.leaf.carbon *= bioturb_keep;
+        litteritem->agsub.leaf.nitrogen += litteritem->agtop.leaf.nitrogen*bioturb;
+        litteritem->agtop.leaf.nitrogen *= bioturb_keep;
       }
       beta=albedo_stand(stand);
-      petpar(&daylength,&par,&eeq,cell->coord.lat,day,climate->temp,climate->lwnet,climate->swdown,config->radiation_lwdown,beta);
+      petpar_stand(&daylength,&par,&eeq,&petpar_day,beta);
       if(config->isgsi_livefuel)
       {
         if(s==0)
@@ -232,7 +247,13 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
       stand->soil.micro_heating[0]+=m_heat*stand->soil.litter.decomC;
 #endif
 
+#ifdef USE_TIMING
+      timing_start(tstand);
+#endif
       update_soil_thermal_state(&stand->soil,climate->temp,config);
+#ifdef USE_TIMING
+      timing_stop(SOIL_THERMAL_FCN,tstand);
+#endif
 
       foreachsoillayer(l)
       {
@@ -464,9 +485,15 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
         cell->balance.influx.nitrogen+=bnf*stand->frac;
       }
 
+#ifdef USE_TIMING
+      timing_start(tstand);
+#endif
       runoff=daily_stand(stand,co2,climate,day,month,daylength,
                          gtemp_air,gtemp_soil[0],eeq,par,
                          melt,npft,ncft,year,intercrop,agrfrac,config);
+#ifdef USE_TIMING
+      timing_stop(DAILY_STAND_FCN,tstand);
+#endif
       denitrification(stand,npft,ncft,config);
 
       nh3=volatilization(stand->soil.NH4[0],climate->windspeed,climate->temp,
@@ -591,7 +618,7 @@ void update_daily_cell(Cell *cell,            /**< cell pointer */
     cell->balance.awater_flux+=cell->discharge.drunoff;
     if(config->with_lakes)
     {
-      petpar(&daylength,&par,&eeq,cell->coord.lat,day,climate->temp,climate->lwnet,climate->swdown,config->radiation_lwdown,c_albwater);
+      petpar_stand(&daylength,&par,&eeq,&petpar_day,c_albwater);
       getoutput(&cell->output,PET,config)+=eeq*PRIESTLEY_TAYLOR*(cell->lakefrac+cell->ml.reservoirfrac);
       cell->output.mpet+=eeq*PRIESTLEY_TAYLOR*(cell->lakefrac+cell->ml.reservoirfrac);
       getoutput(&cell->output,ALBEDO,config)+=c_albwater*(cell->lakefrac+cell->ml.reservoirfrac);

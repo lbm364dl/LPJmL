@@ -145,7 +145,7 @@ extern long long getfilesizep(FILE *);
 extern const char *strippath(const char *);
 extern long long diskfree(const char *);
 extern void fprintintf(FILE *,long long);
-extern void getcounts(int [],int [],int,int,int);
+extern void getcounts(int [],int [],const int [],int,int);
 extern char *getbuilddate(void);
 extern char *gethash(void);
 extern char *getrepo(void);

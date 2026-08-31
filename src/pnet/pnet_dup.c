@@ -49,10 +49,20 @@ Pnet *pnet_dup(const Pnet *pnet
   ret->ntask=pnet->ntask;
   ret->lo=pnet->lo;
   ret->hi=pnet->hi;
+  /* the copy must carry the same split, not derive one of its own */
+  ret->bounds=newvec(int,pnet->ntask+1);
+  if(ret->bounds==NULL)
+  {
+    free(ret);
+    return NULL;
+  }
+  for(i=0;i<=pnet->ntask;i++)
+    ret->bounds[i]=pnet->bounds[i];
   /* allocate memory for connection list array */
   ret->connect=newvec2(Intlist,pnet->lo,pnet->hi);
   if(ret->connect==NULL) /* was memory allocation successful? */
   {
+    free(ret->bounds);
     free(ret);
     return NULL; /* no, return NULL */
   }
@@ -68,6 +78,7 @@ Pnet *pnet_dup(const Pnet *pnet
   if(ret->outdisp==NULL)
   {
     freevec(ret->connect,pnet->lo,pnet->hi);
+    free(ret->bounds);
     free(ret);
     return NULL;
   }
@@ -76,6 +87,7 @@ Pnet *pnet_dup(const Pnet *pnet
   {
     free(ret->outdisp);
     freevec(ret->connect,pnet->lo,pnet->hi);
+    free(ret->bounds);
     free(ret);
     return NULL;
   }
@@ -85,6 +97,7 @@ Pnet *pnet_dup(const Pnet *pnet
     free(ret->outdisp);
     free(ret->indisp);
     freevec(ret->connect,pnet->lo,pnet->hi);
+    free(ret->bounds);
     free(ret);
     return NULL;
   }
@@ -95,6 +108,7 @@ Pnet *pnet_dup(const Pnet *pnet
     free(ret->indisp);
     free(ret->outlen);
     freevec(ret->connect,pnet->lo,pnet->hi);
+    free(ret->bounds);
     free(ret);
     return NULL;
   }

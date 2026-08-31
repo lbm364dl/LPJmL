@@ -83,7 +83,7 @@ Coord_array *createcoord_all(const Cell grid[],const Config *config)
     }
     return NULL;
   }
-  getcounts(counts,offsets,config->nall,1,config->ntask);
+  getcounts(counts,offsets,config->cellcounts,1,config->ntask);
   for(cell=0;cell<config->ngridcell;cell++)
     vec[cell]=grid[cell].coord.lon;
   MPI_Gatherv(vec,config->ngridcell,

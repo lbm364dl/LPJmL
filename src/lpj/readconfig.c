@@ -36,6 +36,10 @@ Bool readconfig(Config *config,        /**< LPJ configuration */
   char *sim_id[]={"lpj","lpjml","lpjml_image","lpjml_fms"};
   config->arglist=catstrvec(*argv,*argc); /* store command line in arglist */
   config->coupled_model=NULL;
+  config->cellcounts=NULL;
+  config->cellcost_filename=NULL;
+  config->write_cellcost_filename=NULL;
+  config->task_weights=NULL;
   config->route=NULL;
   config->irrig_neighbour=NULL;
   config->irrig_back=NULL;
