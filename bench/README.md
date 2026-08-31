@@ -614,7 +614,39 @@ defaults to 0, which is off and byte-identical.
     1e-4           44.4 s     18.7%         18.1             11.5%
     1e-3           42.3 s     22.5%         17.9             12.8%
 
-### Decided: on, at 1e-4
+### Decided: off. It moves the nitrogen cycle.
+
+The provenance argument below is sound -- the small crop fractions really are
+disaggregation residue, down to denormal float32 -- and the carbon and water
+totals really are unmoved.  Both are beside the point, because the quantity it
+moves is nitrogen, and on a global run with river routing it moves it a long
+way:
+
+    threshold   time     NPP    nuptake   nlosses    vs original
+    off        111.5 s  64.69    718.8      134.4
+    1e-6        58.6 s  64.68    718.5      181.3       +34.7%
+    1e-5        56.7 s  64.66    718.2      208.8       +54.8%
+    1e-4        54.9 s  64.66    718.1      206.8       +53.3%
+
+Nitrogen inputs and uptake are unchanged to a tenth of a percent; **losses** rise
+by a third to a half.  The effect is not proportional to the area moved -- 1e-6
+is a quarter of a hectare per cell, entirely inside the range that holds nothing
+but float32 residue, and it still moves losses by 34.7%.  So it is structural:
+what matters is that a crop stand disappears and its area joins another with a
+different fertiliser regime, not how much area moved.
+
+It was very nearly missed.  The first measurement was on a 1000-cell
+agricultural block with routing off, where the same threshold moved losses by
+5.4% -- a tenth of the global figure -- and the carbon and water columns, which
+were what got looked at, moved by fractions of a percent at every scale.  For a
+project whose inputs include fertiliser and manure nitrogen, nitrogen is the
+column to check first, and a subset is not a safe place to check it.
+
+The parameter and `bench/enable_balance.py --min-cropfrac` remain, for anyone who
+wants the 18.7% and has decided the nitrogen behaviour is acceptable.  The
+default is 0.
+
+### The provenance argument, which still holds
 
 Tracing the land-use input settles what the small fractions are.
 `prepare_spatialize_all.R` in WHEP joins national crop areas to grid cells
@@ -644,10 +676,9 @@ Carbon pools do not move to three figures; water moves by a tenth of a percent.
 No crop is erased either: across all 32, each keeps between 97.4% and 99.98% of
 its own area at 1e-4.
 
-`min_cropfrac` is therefore **1e-4 in par/lpjparam.cjson**, which is 18.7%
-faster.  A configuration written by lpjmlkit carries its own copy of the
-parameters, so one generated before this change needs
-`bench/enable_balance.py <config> --min-cropfrac 1e-4`.
+None of which licenses turning it on: see above.  What it does establish is that
+the *input* is wrong, which is worth fixing at source whatever LPJmL does with
+it.
 
 The denormals are reported upstream as eduaguilera/whep#985; if they are fixed
 at source this threshold can come down.
