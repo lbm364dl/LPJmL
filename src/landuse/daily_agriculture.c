@@ -298,6 +298,21 @@ Real daily_agriculture(Stand *stand,                /**< [inout] stand pointer *
         pft=getpft(&stand->pftlist,0);
         index=(stand->type->landusetype==OTHERS) ? data->irrigation*nirrig+rothers(ncft) : pft->par->id-npft+data->irrigation*nirrig;
         crop=pft->data;
+        /* CFT_AIRRIG_MONTH accumulates HERE, outside the crop->sh branch below,
+           and deliberately not through the separate-harvests path.
+           With "separate_harvests" set, the annual CFT_AIRRIG is staged in
+           crop->sh->irrig_apply and only reaches its band at harvest, in
+           update_separate_harvests.c. An accumulation placed in the else branch
+           therefore never sees a crop that has separate harvests -- the only
+           stand reaching it is OTHERS, whose band is rothers(ncft). That was the
+           defect WHEP reported on 2026-08-31: every crop's water arrived in one
+           band (29, "irrigated others") with the other 31 empty.
+           A monthly series wants the water in the month it was applied and needs
+           no harvest-time attribution, so it must not follow the staging path. */
+        if(config->pft_output_scaled)
+          getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply*stand->frac;
+        else
+          getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply;
         if(crop->sh!=NULL)
         {
           if(config->pft_output_scaled)
@@ -308,15 +323,9 @@ Real daily_agriculture(Stand *stand,                /**< [inout] stand pointer *
         else
         {
           if(config->pft_output_scaled)
-            {
-              getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply*stand->frac;
-              getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply*stand->frac;
-            }
+            getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply*stand->frac;
           else
-            {
-              getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply;
-              getoutputindex(output,CFT_AIRRIG_MONTH,index,config)+=irrig_apply;
-            }
+            getoutputindex(output,CFT_AIRRIG,index,config)+=irrig_apply;
         }
       }
     }
