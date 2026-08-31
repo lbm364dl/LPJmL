@@ -614,7 +614,52 @@ defaults to 0, which is off and byte-identical.
     1e-4           44.4 s     18.7%         18.1             11.5%
     1e-3           42.3 s     22.5%         17.9             12.8%
 
-### Decided: off. It moves the nitrogen cycle.
+### It depends entirely on whether the run starts from a restart
+
+The nitrogen result below is real but it is not a property of `min_cropfrac`.
+It is what happens when the parameter is applied to a **restart file built
+without it**: a third of the crop stands already exist, are deleted in the first
+year, and the nitrogen held in their soil comes out.  It decays away:
+
+    year   losses off   with 1e-4
+    1901       134.4       206.8    +53.7%
+    1902       142.1       222.8    +56.3%
+    1903       136.2       159.3    +16.9%
+    1905       133.1       136.8     +2.3%
+    1908       133.4       132.5     -0.8%
+
+Six years, then the two runs agree.  Soil nitrogen stocks, uptake and inputs are
+unchanged throughout; only the loss term spikes, which is what dumping a stored
+pool looks like.
+
+Run the same comparison **from scratch**, which is what a spinup run does, and
+the spike is not there at all -- the stands are never created, so there is
+nothing to delete:
+
+    global, no restart, 20 spinup years, output from 1750
+    year   losses off   with 1e-4
+    1750      1788.5      1788.5    identical
+    1751      1835.7      1804.5      -1.7%
+    1752      1836.0      1801.6      -1.9%
+    1753      1838.4      1806.9      -1.7%
+
+NPP and uptake match to five figures.  The steady -1.7% is the real effect of
+the changed crop mix, and it is downward.
+
+So:
+
+  * **a run that starts from a restart written without it** -- config_recover
+    and anything like it -- gets six years of inflated nitrogen losses.  Either
+    leave it off, or discard those years.
+  * **a run that starts from scratch and spins up** -- config_rerun_recommended,
+    1450 to 2023 with output from 1750 -- has no transient, and on that shape it
+    is worth **19%** (1181.8 s against 957.1 s over 24 years at 32 ranks).
+
+The default stays 0 because it cannot be right for both.  Set it per run:
+
+    bench/enable_balance.py <config> --min-cropfrac 1e-4
+
+### The earlier reasoning
 
 The provenance argument below is sound -- the small crop fractions really are
 disaggregation residue, down to denormal float32 -- and the carbon and water
