@@ -2,7 +2,13 @@
 """Turn on the cost-based decomposition in an LPJmL configuration.
 
     enable_balance.py <config.json> --cost cost_pcore.bin [--weights w.csv|CSV]
+    enable_balance.py <config.json> --min-cropfrac 1e-4
     enable_balance.py <config.json> --off
+
+A configuration written by lpjmlkit carries its own copy of the parameters
+rather than reading par/lpjparam.cjson, so a parameter changed in the model
+tree does not reach a configuration already generated.  --min-cropfrac writes
+it into the copy.
 
 The cost file is produced by any run with "write_cellcost_filename" set, and
 should be measured on cores of one kind -- eight P-cores, say -- because the
@@ -33,6 +39,9 @@ def main():
     ap.add_argument("--weights", default=None,
                     help="comma-separated per-task speeds, or a file holding them")
     ap.add_argument("--off", action="store_true", help="remove both keys again")
+    ap.add_argument("--min-cropfrac", dest="min_cropfrac", type=float, default=None,
+                    help="fold crop areas below this fraction of the cell into "
+                         "the largest crop of the same irrigation regime")
     args = ap.parse_args()
 
     with open(args.config) as f:
@@ -41,10 +50,14 @@ def main():
     if args.off:
         for k in ("cellcost_filename", "task_weights"):
             cfg.pop(k, None)
-        print("removed cellcost_filename and task_weights")
+        cfg.get("param", {}).pop("min_cropfrac", None)
+        print("removed cellcost_filename, task_weights and min_cropfrac")
+    elif args.min_cropfrac is not None and not args.cost:
+        cfg.setdefault("param", {})["min_cropfrac"] = args.min_cropfrac
+        print(f"param.min_cropfrac = {args.min_cropfrac}")
     else:
         if not args.cost:
-            sys.exit("--cost is required unless --off is given")
+            sys.exit("--cost or --min-cropfrac is required unless --off is given")
         cost = os.path.abspath(args.cost)
         if not os.path.exists(cost):
             sys.exit(f"no cost file at {cost}")
@@ -63,6 +76,9 @@ def main():
                   "mpirun --bind-to core --map-by core")
         else:
             cfg.pop("task_weights", None)
+        if args.min_cropfrac is not None:
+            cfg.setdefault("param", {})["min_cropfrac"] = args.min_cropfrac
+            print(f"param.min_cropfrac = {args.min_cropfrac}")
 
     with open(args.config, "w") as f:
         json.dump(cfg, f, indent=1)
