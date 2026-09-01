@@ -97,6 +97,16 @@ Default is 0.  Set it per run: `bench/enable_balance.py <config> --min-cropfrac 
                                                      unnecessary at 32
     /home/usuario/lpjml_perf_runs/cost_period_REJECTED_do_not_use.bin
 
+## An open question from outside this work
+
+`bench/FINDING-cost-split-outputs.md`: comparing a run made with the cost-based
+split against one made without it, 166 of 169 outputs are bit-identical but
+`soilc_1m` and `pft_agtop_litterc` are not, with `soilc_1m` showing 60 cells
+whose values look swapped between cells. `cc2e8ed1` fixed one instance of "every
+task holds the same number of cells"; this looks like another. Neither field is
+consumed downstream, so it is not urgent, but it was only visible because a
+pre-split run existed to compare against.
+
 ## State of the fork
 
 Everything from this work is merged to `master` (PRs #8 through #33).  Three
