@@ -1,8 +1,9 @@
 # Two outputs change under the cost-based split, and it is not understood
 
-Found 2026-09-01 by comparing two runs of the same 1750–2023 global
-configuration that differ only in the decomposition and the build. Recorded here
-rather than as an issue because the fork has issues disabled.
+Tracked as issue #37. Found 2026-09-01 by comparing two runs of the same
+1750–2023 global configuration that differ only in the decomposition and the
+build; this file carries the detail and the reproduction recipe, the issue
+carries the status.
 
 **Nothing is broken downstream today** — neither field is consumed by WHEP. The
 reason to chase it is that the mechanism, if it is what it looks like, is not

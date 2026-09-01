@@ -99,7 +99,7 @@ Default is 0.  Set it per run: `bench/enable_balance.py <config> --min-cropfrac 
 
 ## An open question from outside this work
 
-`bench/FINDING-cost-split-outputs.md`: comparing a run made with the cost-based
+`bench/FINDING-cost-split-outputs.md` (issue #37): comparing a run made with the cost-based
 split against one made without it, 166 of 169 outputs are bit-identical but
 `soilc_1m` and `pft_agtop_litterc` are not, with `soilc_1m` showing 60 cells
 whose values look swapped between cells. `cc2e8ed1` fixed one instance of "every
